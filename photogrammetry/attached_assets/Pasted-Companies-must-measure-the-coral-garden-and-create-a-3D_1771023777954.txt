@@ -1,0 +1,46 @@
+Companies must measure the coral garden and create a 3D model of the garden area. The coral
+garden will be constructed from ½-inch PVC pipe, will be between 1 meter and 2.5 meters in length,
+approximately 36 cm wide and an unknown height. Eight 10 cm x 10 cm colored squares,
+constructed from corrugated plastic sheeting, will be attached to the PVC of the coral garden.
+These will be targets for modelling the coral garden.
+The coral garden
+Companies choosing to create a 3D model of the coral garden autonomously must use
+photogrammetry to create a 3D model of the coral garden in a CAD program with the proper
+dimensions displayed. Companies may manually maneuver around the coral garden to take
+photos. Companies may transfer any images from the ROV to a computer or device at the mission
+station. This transfer does not have to be done autonomously; it can be accomplished "by hand."
+Companies are permitted to place an object of known dimensions (e.g., a ruler) on or near the coral
+garden to assist in the measurements. Note that this object of known dimensions will count as
+debris if it is not under control of the ROV or removed from the pool by the end of product
+demonstration time.
+Companies will receive up to 20 points for successfully modeling the coral garden via
+photogrammetry. Successfully modeling the coral garden via photogrammetry is defined as the
+coral garden displayed as a 3D image on a screen at the product demonstration station. The image
+should be able to be rotated so that the station judge can view it from any angle. The 3D image
+must show all eight targets (10 cm x 10 cm colored squares). Companies that display all eight
+targets on their model will receive 20 points. If four to seven targets are displayed on the model,
+companies will receive 15 points. If one to three targets are displayed, companies will receive 10
+points. If no targets are displayed, but the company does display a 3D model, companies will
+receive 5 points. 
+2026 RANGER CLASS 28
+Companies must also measure the length of the coral garden and use that length to scale the 3D
+image accordingly. Companies will receive 10 points for successfully measuring the length of the
+coral garden. Successfully measuring the length of the coral garden is defined as the company’s
+measurement being within 5 cm of the true length. Companies must show the station judge their
+measurement or explain how they are estimating the measurement; companies may not guess.
+Once the company provides their length measurement (regardless if it is within 5 cm), the station
+judge will provide the company with the true length of the coral garden. A company that does not
+attempt to measure the length will not receive the true length of the coral garden from the station
+judge and therefore cannot complete the scaling or height estimation steps.
+Companies should use the true length provided by the station judge to scale their 3D model of the
+coral garden. Companies will receive 5 points for successfully scaling their 3D model and
+displaying the length measurement on that model. Successfully scaling the model and displaying
+the length is defined as the station judge being able to see the true length displayed on the 3D
+model.
+Using the scaled length of the 3D model, companies must estimate the height of the coral garden.
+The height includes the height of any PVC tees on top of the coral garden; the height measurement
+is from the bottom of the coral garden structure to the top of the coral garden. Companies will
+receive 5 points when they successfully estimate the height of the coral garden within 5 cm.
+Successfully estimating the height of the coral garden is defined as using the 3D image properly
+scaled for length to determine the height. The station judge must be able to see the height
+displayed on the 3D model, and that height must be within 5 cm of the true height.
