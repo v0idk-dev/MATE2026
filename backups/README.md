@@ -48,7 +48,7 @@ README.md                         - this file
 
 ## Core Files
 
-A backup of these files are store in [../backups](../backups). These files need to be added in addition to the dependencies if they are missing.
+A backup of these files are store in `../backups`. These files need to be added in addition to the dependencies if they are missing.
 
 ```
 build/*
@@ -134,8 +134,7 @@ npm start
 
 ## Build Commands
 
-First, replace `"identity"` in package.json with correct signage from `security find-identity -v -p codesigning`.
-Also, **WARNING**: do *not* build inside of a storage provider folder, such as Google Drive or iCloud. Build completely on device, or the build will fail, as storage providers add extra metadata not compatible with the build process.
+First, replace `"identity"` in package.json with correct signage from `security find-identity -v -p codesigning`
 
 ```bash
 make -C scripts/task1_2 clean
