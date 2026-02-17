@@ -1,0 +1,95 @@
+{
+  "name": "mate-2026-robot-controller",
+  "version": "0.0.1",
+  "description": "MATE 2026 ROV Control System",
+  "author": "Dogukan Koc",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder build --mac --arm64",
+    "build:dev": "electron-builder build --mac --arm64 --config.mac.identity=null",
+    "pack": "electron-builder --dir --arm64"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "dev.v0idk.mate2026",
+    "productName": "MATE 2026 Robot Controller",
+    "copyright": "Copyright © 2026 Dogukan Koc",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
+      "identity": "Apple Development: Cagatay Koc (KHLRQWQML7)",
+      "provisioningProfile": null,
+      "darkModeSupport": true
+    },
+    "dmg": {
+      "title": "MATE Robot Control ${version}",
+      "icon": "build/icon.icns",
+      "background": null,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    },
+    "extraResources": [
+      {
+        "from": "app/Resources",
+        "to": "app/Resources",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": ["**/*", "!**/.DS_Store"]
+      },
+      {
+        "from": "web",
+        "to": "web",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "outputs",
+        "to": "outputs",
+        "filter": ["**/*"]
+      }
+    ],
+    "files": [
+      "main.js",
+      "package.json",
+      "!**/node_modules/**/*",
+      "!**/.git/**/*",
+      "!**/dist/**/*"
+    ],
+    "asarUnpack": [
+      "**/*.node",
+      "app/Resources/**/*",
+      "scripts/**/*",
+      "web/**/*"
+    ]
+  }
+}
