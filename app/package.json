@@ -23,7 +23,7 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64"]
+          "arch": ["arm64"]
         }
       ],
       "icon": "build/icon.icns",
@@ -31,7 +31,6 @@
       "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",
       "entitlementsInherit": "entitlements.mac.plist",
-      "identity": "Apple Development: Cagatay Koc (KHLRQWQML7)",
       "provisioningProfile": null,
       "darkModeSupport": true
     },
@@ -60,7 +59,7 @@
       {
         "from": "app/Resources",
         "to": "app/Resources",
-        "filter": ["**/*"]
+        "filter": ["**/*", "!**/*.a", "!**/3rdparty/**"]
       },
       {
         "from": "scripts",
