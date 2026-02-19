@@ -142,10 +142,6 @@ Next, make sure ***NOTHING*** shows up when you run this command: `find app/Reso
 Also, **WARNING**: do *not* build inside of a storage provider folder, such as Google Drive or iCloud. Build completely on device, or the build will fail, as storage providers add extra metadata not compatible with the build process.
 
 ```bash
-make -C scripts/task1_2 clean
-make -C scripts/task1_2 all
-./cleanup.sh
-
 # Build with signing (for distribution)
 ./build.sh "SIGNING-IDENTITY"
 
