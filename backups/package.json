@@ -1,6 +1,6 @@
 {
   "name": "mate-2026-robot-controller",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "MATE 2026 ROV Control System",
   "author": "Dogukan Koc",
   "main": "main.js",
@@ -11,8 +11,8 @@
     "pack": "electron-builder --dir --arm64"
   },
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
   },
   "build": {
     "appId": "dev.v0idk.mate2026",
@@ -23,7 +23,9 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         }
       ],
       "icon": "build/icon.icns",
@@ -59,22 +61,33 @@
       {
         "from": "app/Resources",
         "to": "app/Resources",
-        "filter": ["**/*", "!**/*.a", "!**/3rdparty/**"]
+        "filter": [
+          "**/*",
+          "!**/*.a",
+          "!**/3rdparty/**"
+        ]
       },
       {
         "from": "scripts",
         "to": "scripts",
-        "filter": ["**/*", "!**/.DS_Store"]
+        "filter": [
+          "**/*",
+          "!**/.DS_Store"
+        ]
       },
       {
         "from": "web",
         "to": "web",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "outputs",
         "to": "outputs",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "files": [
@@ -90,5 +103,12 @@
       "scripts/**/*",
       "web/**/*"
     ]
+  },
+  "keywords": [],
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.19.0"
   }
 }
