@@ -1,0 +1,8 @@
+Camera: 16 Pro 1x
+Focal Length: 24mm
+Sensor Width: 7mm
+Distance: 3cm
+T: 121cm
+B: 118cm
+R: 128cm
+L: 135cm
