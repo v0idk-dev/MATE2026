@@ -3,215 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MATE ROV - Vision Tools</title>
+    <title>MATE ROV — Vision Tools</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="app-container">
-        <header class="app-header">
-            <div class="header-content">
-                <div class="logo-group">
-                    <div class="logo-icon">
-                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="14" cy="20" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-                            <circle cx="26" cy="20" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-                            <line x1="14" y1="20" x2="26" y2="20" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h1>MATE ROV Vision Tools</h1>
-                        <p class="subtitle">Stereo distance measurement & PVC pipe length analysis</p>
-                    </div>
-                </div>
-            </div>
-        </header>
 
-        <main class="main-content">
-            <div class="mode-selector">
-                <button class="mode-btn active" data-mode="plates" onclick="switchMode('plates')">
-                    Plate Distance
-                </button>
-                <button class="mode-btn" data-mode="pipes" onclick="switchMode('pipes')">
-                    Pipe Lengths
-                </button>
-            </div>
+<header class="app-header">
+    <h1>MATE ROV Vision Tools</h1>
+    <p class="subtitle">Stereo distance measurement & PVC pipe length analysis</p>
+</header>
 
-            <div id="plates-mode">
-                <div class="upload-section">
-                    <h2 class="section-title">Upload Stereo Images</h2>
-                    <div class="upload-grid">
-                        <div class="upload-card" id="left-upload">
-                            <input type="file" id="left-image" accept="image/*" hidden>
-                            <div class="upload-placeholder" onclick="document.getElementById('left-image').click()">
-                                <div class="upload-icon">
-                                    <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                                </div>
-                                <span class="upload-label">Left Camera (CH01)</span>
-                                <span class="upload-hint">Click to select image</span>
-                            </div>
-                            <img id="left-preview" class="image-preview" alt="Left image preview">
-                        </div>
-                        <div class="upload-card" id="right-upload">
-                            <input type="file" id="right-image" accept="image/*" hidden>
-                            <div class="upload-placeholder" onclick="document.getElementById('right-image').click()">
-                                <div class="upload-icon">
-                                    <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                                </div>
-                                <span class="upload-label">Right Camera (CH02)</span>
-                                <span class="upload-hint">Click to select image</span>
-                            </div>
-                            <img id="right-preview" class="image-preview" alt="Right image preview">
-                        </div>
-                    </div>
-                </div>
+<div class="app-container">
 
-                <div class="params-section">
-                    <div class="params-header" onclick="toggleParams()">
-                        <h2 class="section-title">Camera Parameters</h2>
-                        <span class="toggle-icon" id="params-toggle">+</span>
-                    </div>
-                    <div class="params-grid" id="params-panel" style="display:none">
-                        <div class="param-group">
-                            <label for="focal-length">Focal Length (mm)</label>
-                            <input type="number" id="focal-length" value="35.0" step="0.1" min="1">
-                        </div>
-                        <div class="param-group">
-                            <label for="sensor-width">Sensor Width (mm)</label>
-                            <input type="number" id="sensor-width" value="36.0" step="0.1" min="1">
-                        </div>
-                        <div class="param-group">
-                            <label for="baseline">Camera Baseline (m)</label>
-                            <input type="number" id="baseline" value="0.1" step="0.01" min="0.001">
-                        </div>
-                        <div class="param-group">
-                            <label for="plate-width">Plate Width (m)</label>
-                            <input type="number" id="plate-width" value="0.3" step="0.01" min="0.01">
-                        </div>
-                        <div class="param-group">
-                            <label for="plate-height">Plate Height (m)</label>
-                            <input type="number" id="plate-height" value="0.2" step="0.01" min="0.01">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="pipes-mode" style="display:none">
-                <div class="upload-section">
-                    <h2 class="section-title">Upload Coral Garden Image</h2>
-                    <div class="upload-grid" style="grid-template-columns:1fr">
-                        <div class="upload-card" id="pipe-upload">
-                            <input type="file" id="pipe-image" accept="image/*" hidden>
-                            <div class="upload-placeholder" onclick="document.getElementById('pipe-image').click()">
-                                <div class="upload-icon">
-                                    <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                                </div>
-                                <span class="upload-label">Coral Garden Image</span>
-                                <span class="upload-hint">Click to select image with PVC pipes and reference squares</span>
-                            </div>
-                            <img id="pipe-preview" class="image-preview" alt="Pipe image preview">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="params-section">
-                    <div class="params-header" onclick="togglePipeParams()">
-                        <h2 class="section-title">Reference Parameters</h2>
-                        <span class="toggle-icon" id="pipe-params-toggle">+</span>
-                    </div>
-                    <div class="params-grid" id="pipe-params-panel" style="display:none">
-                        <div class="param-group">
-                            <label for="ref-square-side">Reference Square Side (cm)</label>
-                            <input type="number" id="ref-square-side" value="10.0" step="0.1" min="0.1">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="action-section">
-                <button id="analyze-btn" class="btn-primary" onclick="runAnalysis()" disabled>
-                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    <span id="analyze-btn-text">Analyze Distance</span>
-                </button>
-            </div>
-
-            <div id="loading-section" class="loading-section" style="display:none">
-                <div class="spinner"></div>
-                <p>Analyzing image...</p>
-                <p class="loading-sub" id="loading-sub-text">Processing...</p>
-            </div>
-
-            <div id="error-section" class="error-section" style="display:none">
-                <div class="error-card">
-                    <span class="error-icon">!</span>
-                    <p id="error-message"></p>
-                </div>
-            </div>
-
-            <div id="results-section" class="results-section" style="display:none">
-                <div class="annotated-section">
-                    <h2 class="section-title" id="results-title">Results</h2>
-                    <div id="annotated-image-container" class="annotated-container"></div>
-                </div>
-
-                <div id="plate-results" style="display:none">
-                    <div class="plate-distances-section">
-                        <h2 class="section-title">Plate Distances</h2>
-                        <div id="plate-distances-list" class="plate-distances-grid"></div>
-                    </div>
-
-                    <div class="results-grid">
-                        <div class="result-card">
-                            <h3>Stereo Geometry</h3>
-                            <div class="stat-list" id="stereo-stats"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="pipe-results" style="display:none">
-                    <div class="plate-distances-section">
-                        <h2 class="section-title">Pipe Lengths</h2>
-                        <div id="pipe-lengths-list" class="plate-distances-grid"></div>
-                    </div>
-
-                    <div class="results-grid">
-                        <div class="result-card">
-                            <h3>Scale Calibration</h3>
-                            <div class="stat-list" id="scale-stats"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="debug-section">
-                    <h2 class="section-title">Visualization</h2>
-                    <div class="tabs" id="debug-tabs">
-                        <button class="tab active" data-tab="uploaded">Input Images</button>
-                        <button class="tab" data-tab="detections">Detections</button>
-                        <button class="tab" data-tab="matches">Feature Matches</button>
-                        <button class="tab" data-tab="epipolar">Epipolar Lines</button>
-                    </div>
-                    <div class="tab-content" id="tab-content">
-                        <div class="tab-panel active" id="panel-uploaded"></div>
-                        <div class="tab-panel" id="panel-detections"></div>
-                        <div class="tab-panel" id="panel-matches"></div>
-                        <div class="tab-panel" id="panel-epipolar"></div>
-                    </div>
-                </div>
-
-                <div class="raw-output-section">
-                    <div class="raw-header" onclick="toggleRaw()">
-                        <h3>Raw Console Output</h3>
-                        <span class="toggle-icon" id="raw-toggle">+</span>
-                    </div>
-                    <pre id="raw-output" style="display:none"></pre>
-                </div>
-            </div>
-        </main>
-
-        <footer class="app-footer">
-            <p>MATE ROV Vision Tools &mdash; OpenCV + C++ Engine</p>
-        </footer>
+    <div class="card scard" style="padding: 0.5rem 0.5rem;">
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="plates" onclick="switchMode('plates')">Plate Distance</button>
+            <button class="mode-btn" data-mode="pipes" onclick="switchMode('pipes')">Pipe Lengths</button>
+        </div>
     </div>
 
-    <script src="/static/js/app.js"></script>
+    <!-- ── Plates mode ── -->
+    <div id="plates-mode">
+
+        <div class="card scard">
+            <div class="section-title">Upload Stereo Images</div>
+            <div class="upload-grid">
+                <div class="upload-card" id="left-upload">
+                    <input type="file" id="left-image" accept="image/*" hidden>
+                    <div class="upload-placeholder" onclick="document.getElementById('left-image').click()">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                        </div>
+                        <span class="upload-label">Left Camera (CH01)</span>
+                        <span class="upload-hint">Click to select</span>
+                    </div>
+                    <img id="left-preview" class="image-preview" alt="">
+                </div>
+                <div class="upload-card" id="right-upload">
+                    <input type="file" id="right-image" accept="image/*" hidden>
+                    <div class="upload-placeholder" onclick="document.getElementById('right-image').click()">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                        </div>
+                        <span class="upload-label">Right Camera (CH02)</span>
+                        <span class="upload-hint">Click to select</span>
+                    </div>
+                    <img id="right-preview" class="image-preview" alt="">
+                </div>
+            </div>
+        </div>
+
+        <div class="params-section">
+            <div class="params-header" onclick="toggleParams()">
+                <div class="section-title">Camera Parameters</div>
+                <span class="toggle-icon" id="params-toggle">+</span>
+            </div>
+            <div class="params-grid" id="params-panel" style="display:none">
+                <div class="param-group">
+                    <label for="focal-length">Focal Length (mm)</label>
+                    <input type="number" id="focal-length" value="35.0" step="0.1" min="1">
+                </div>
+                <div class="param-group">
+                    <label for="sensor-width">Sensor Width (mm)</label>
+                    <input type="number" id="sensor-width" value="36.0" step="0.1" min="1">
+                </div>
+                <div class="param-group">
+                    <label for="baseline">Camera Baseline (m)</label>
+                    <input type="number" id="baseline" value="0.1" step="0.01" min="0.001">
+                </div>
+                <div class="param-group">
+                    <label for="plate-width">Plate Width (m)</label>
+                    <input type="number" id="plate-width" value="0.3" step="0.01" min="0.01">
+                </div>
+                <div class="param-group">
+                    <label for="plate-height">Plate Height (m)</label>
+                    <input type="number" id="plate-height" value="0.2" step="0.01" min="0.01">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Pipes mode ── -->
+    <div id="pipes-mode" style="display:none">
+
+        <div class="card scard">
+            <div class="section-title">Upload Coral Garden Image</div>
+            <div class="upload-grid" style="grid-template-columns:1fr">
+                <div class="upload-card" id="pipe-upload">
+                    <input type="file" id="pipe-image" accept="image/*" hidden>
+                    <div class="upload-placeholder" onclick="document.getElementById('pipe-image').click()">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                        </div>
+                        <span class="upload-label">Coral Garden Image</span>
+                        <span class="upload-hint">Image with PVC pipes and reference squares</span>
+                    </div>
+                    <img id="pipe-preview" class="image-preview" alt="">
+                </div>
+            </div>
+        </div>
+
+        <div class="params-section">
+            <div class="params-header" onclick="togglePipeParams()">
+                <div class="section-title">Reference Parameters</div>
+                <span class="toggle-icon" id="pipe-params-toggle">+</span>
+            </div>
+            <div class="params-grid" id="pipe-params-panel" style="display:none">
+                <div class="param-group">
+                    <label for="ref-square-side">Reference Square Side (cm)</label>
+                    <input type="number" id="ref-square-side" value="10.0" step="0.1" min="0.1">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Analyze -->
+    <div class="action-section">
+        <button id="analyze-btn" class="btn-primary" onclick="runAnalysis()" disabled>
+            <svg viewBox="0 0 24 24" fill="none" width="17" height="17"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span id="analyze-btn-text">Analyze</span>
+        </button>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-section" class="loading-section" style="display:none">
+        <div class="spinner"></div>
+        <p>Analyzing…</p>
+        <p class="loading-sub" id="loading-sub-text">Processing</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error-section" style="display:none">
+        <div class="error-card">
+            <span class="error-icon">!</span>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <!-- ── Results ── -->
+    <div id="results-section" style="display:none">
+
+        <!-- Annotated output image -->
+        <div class="card scard">
+            <div class="section-title" id="results-title">Annotated Output</div>
+            <div id="annotated-image-container" class="annotated-container"></div>
+        </div>
+
+        <!-- Plate results -->
+        <div id="plate-results" style="display:none">
+
+            <div class="card scard">
+                <div class="section-title">Plate Distances</div>
+                <div id="plate-distances-list" class="plate-distances-grid"></div>
+            </div>
+
+            <div class="result-card">
+                <h3>Stereo Geometry</h3>
+                <div class="stat-list" id="stereo-stats"></div>
+            </div>
+
+        </div>
+
+        <!-- Pipe results -->
+        <div id="pipe-results" style="display:none">
+
+            <div class="card scard">
+                <div class="section-title">Pipe Lengths</div>
+                <div id="pipe-lengths-list" class="plate-distances-grid"></div>
+            </div>
+
+            <div class="result-card">
+                <h3>Scale Calibration</h3>
+                <div class="stat-list" id="scale-stats"></div>
+            </div>
+
+        </div>
+
+        <!-- Visualization tabs -->
+        <div class="card scard">
+            <div class="section-title">Visualization</div>
+            <div class="tabs">
+                <button class="tab active" data-tab="uploaded">Input Images</button>
+                <button class="tab" data-tab="detections">Detections</button>
+                <button class="tab" data-tab="matches">Feature Matches</button>
+                <button class="tab" data-tab="epipolar">Epipolar Lines</button>
+            </div>
+            <div class="tab-content">
+                <div class="tab-panel active" id="panel-uploaded"></div>
+                <div class="tab-panel" id="panel-detections"></div>
+                <div class="tab-panel" id="panel-matches"></div>
+                <div class="tab-panel" id="panel-epipolar"></div>
+            </div>
+        </div>
+
+        <!-- Raw output -->
+        <div class="raw-output-section">
+            <div class="raw-header" onclick="toggleRaw()">
+                <h3>Raw Console Output</h3>
+                <span class="toggle-icon" id="raw-toggle">+</span>
+            </div>
+            <pre id="raw-output" style="display:none"></pre>
+        </div>
+
+    </div>
+
+</div>
+
+<footer class="app-footer">
+    MATE ROV Vision Tools — OpenCV + C++ Engine
+</footer>
+
+<script src="/static/js/app.js"></script>
 </body>
 </html>

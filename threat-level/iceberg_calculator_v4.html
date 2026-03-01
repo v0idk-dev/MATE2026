@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iceberg Threat Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Iceberg Threat Calculator</h1>
+  <p>Grand Banks Platforms — Platform & Subsea Threat Assessment</p>
+</header>
+
+<div class="layout">
+
+  <div class="card">
+    <div class="card-title">Iceberg Input Data</div>
+    <div class="input-grid">
+      <div class="field">
+        <label>Latitude (°N)</label>
+        <div class="hint">D.MMSS format — e.g. 47.3900 = 47°39'00" N</div>
+        <input type="number" id="lat" value="47.45" step="0.0001">
+      </div>
+      <div class="field">
+        <label>Longitude (°W)</label>
+        <div class="hint">D.MMSS format — e.g. 48.3700 = 48°37'00" W</div>
+        <input type="number" id="lon" value="48.29" step="0.0001">
+      </div>
+      <div class="field">
+        <label>Heading (°)</label>
+        <div class="hint">0=N · 90=E · 180=S · 270=W</div>
+        <input type="number" id="hdg" value="198" min="0" max="360">
+      </div>
+      <div class="field">
+        <label>Keel Depth (m)</label>
+        <div class="hint">Positive metres below sea surface</div>
+        <input type="number" id="keel" value="84" min="0">
+      </div>
+    </div>
+    <button class="calc-btn" onclick="calculate()">Calculate Threats</button>
+  </div>
+
+  <div class="card" id="results-card">
+    <div class="card-title">Competition Answer Summary</div>
+    <div id="results-body">
+      <div class="placeholder">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>Enter iceberg data and press Calculate</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Threat Rules</div>
+    <div class="legend-grid">
+      <div class="legend-section">
+        <h3>Platform Threat (distance to path)</h3>
+        <div class="legend-row"><span class="badge RED">RED</span> &lt; 5 nautical miles</div>
+        <div class="legend-row"><span class="badge YELLOW">YELLOW</span> 5–10 nautical miles</div>
+        <div class="legend-row"><span class="badge GREEN">GREEN</span> &gt; 10 nm or iceberg grounds first</div>
+      </div>
+      <div class="legend-section">
+        <h3>Subsea Threat (keel/depth ratio, within 25 nm)</h3>
+        <div class="legend-row"><span class="badge GREEN">GREEN</span> ≥ 110% — grounds before reaching assets</div>
+        <div class="legend-row"><span class="badge RED">RED</span> 90–110% — critical, keel near seabed</div>
+        <div class="legend-row"><span class="badge YELLOW">YELLOW</span> 70–90% — caution, may impact seafloor</div>
+        <div class="legend-row"><span class="badge GREEN">GREEN</span> &lt; 70% — too shallow, no subsea threat</div>
+        <div class="legend-row"><span class="badge GREEN">GREEN</span> &gt; 25 nm — outside subsea zone</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PLATFORMS = [
+  { name: 'Hibernia',   lat: 46.7504, lon: 48.7819, depth: 78  },
+  { name: 'Sea Rose',   lat: 46.7895, lon: 48.1460, depth: 107 },
+  { name: 'Terra Nova', lat: 46.4000, lon: 48.4000, depth: 91  },
+  { name: 'Hebron',     lat: 46.5440, lon: 48.5180, depth: 93  },
+];
+
+function dmmssToDD(v) {
+  const d = Math.trunc(v);
+  const msFrac = Math.round((v - d) * 100 * 10000) / 10000;
+  const m = Math.trunc(msFrac);
+  const s = msFrac - m;
+  return d + m / 60 + s / 3600;
+}
+
+function calculate() {
+  const rawLat = parseFloat(document.getElementById('lat').value);
+  const rawLon = parseFloat(document.getElementById('lon').value);
+  const hdg    = parseFloat(document.getElementById('hdg').value);
+  const keel   = parseFloat(document.getElementById('keel').value);
+
+  const iLat = dmmssToDD(rawLat);
+  const iLon = dmmssToDD(rawLon);
+
+  const results = PLATFORMS.map(p => {
+    const avgLat = (iLat + p.lat) / 2;
+    const dLon = -(p.lon - iLon) * Math.cos(avgLat * Math.PI / 180) * 60;
+    const dLat = (p.lat - iLat) * 60;
+    const hdgR = hdg * Math.PI / 180;
+    const G = Math.abs(dLon * Math.cos(hdgR) - dLat * Math.sin(hdgR));
+    const H = dLon * Math.sin(hdgR) + dLat * Math.cos(hdgR);
+    const ratio = keel / p.depth;
+    return { ...p, G, H, ratio };
+  });
+
+  results.forEach((r, i) => {
+    const groundedUpstream = results.some((other, j) => {
+      if (j === i) return false;
+      return other.ratio >= 1.1 && other.G < 10 && other.H < r.H;
+    });
+
+    let platformThreat;
+    if (groundedUpstream)                platformThreat = 'GREEN';
+    else if (r.ratio >= 1.1 && r.G < 10) platformThreat = 'GREEN';
+    else if (r.G < 5)                    platformThreat = 'RED';
+    else if (r.G <= 10)                  platformThreat = 'YELLOW';
+    else                                 platformThreat = 'GREEN';
+
+    let subseaThreat;
+    if (r.G > 25)          subseaThreat = 'GREEN';
+    else if (r.ratio >= 1.1) subseaThreat = 'GREEN';
+    else if (r.ratio >= 0.9) subseaThreat = 'RED';
+    else if (r.ratio >= 0.7) subseaThreat = 'YELLOW';
+    else                     subseaThreat = 'GREEN';
+
+    let desc;
+    if (groundedUpstream)
+      desc = 'Iceberg grounded upstream — platform & assets protected.';
+    else if (r.ratio >= 1.1 && r.G < 10)
+      desc = `Iceberg grounds here (keel ${keel}m ≥ 110% of ${r.depth}m floor). Downstream platforms protected.`;
+    else if (r.G > 25)
+      desc = `Beyond 25 nm subsea zone. Platform dist: ${r.G.toFixed(1)} nm.`;
+    else if (r.G < 5)
+      desc = `${r.G.toFixed(2)} nm within RED zone. Ratio ${(r.ratio*100).toFixed(0)}%.`;
+    else if (r.G <= 10)
+      desc = `${r.G.toFixed(2)} nm within YELLOW/watch zone. Ratio ${(r.ratio*100).toFixed(0)}%.`;
+    else
+      desc = `${r.G.toFixed(1)} nm beyond 10 nm. Ratio ${(r.ratio*100).toFixed(0)}%.`;
+
+    const overall = (platformThreat==='RED'||subseaThreat==='RED') ? 'RED'
+      : (platformThreat==='YELLOW'||subseaThreat==='YELLOW') ? 'YELLOW' : 'GREEN';
+
+    r.platformThreat = platformThreat;
+    r.subseaThreat   = subseaThreat;
+    r.desc           = desc;
+    r.overall        = overall;
+  });
+
+  renderResults(results, keel);
+}
+
+function renderResults(results) {
+  const html = `<div class="results-grid">${results.map(r => `
+    <div class="platform-card ${r.overall}">
+      <div class="platform-name">${r.name}</div>
+      <div class="threat-row"><span class="threat-label">Distance to Path</span></div>
+      <div class="big-number">${r.G.toFixed(2)}<span class="unit">nm</span></div>
+      <div class="divider"></div>
+      <div class="threat-row">
+        <span class="threat-label">Keel / Depth</span>
+        <span class="ratio-val">${(r.ratio*100).toFixed(0)}%</span>
+      </div>
+      <div class="divider"></div>
+      <div class="threat-row" style="margin-top:0.5rem">
+        <span class="threat-label">Platform</span>
+        <span class="badge ${r.platformThreat}">${r.platformThreat}</span>
+      </div>
+      <div class="threat-row">
+        <span class="threat-label">Subsea</span>
+        <span class="badge ${r.subseaThreat}">${r.subseaThreat}</span>
+      </div>
+      <div class="desc">${r.desc}</div>
+    </div>
+  `).join('')}</div>`;
+  document.getElementById('results-body').innerHTML = html;
+}
+
+calculate();
+</script>
+</body>
+</html>
