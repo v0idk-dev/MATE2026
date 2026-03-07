@@ -1,0 +1,7 @@
+{
+     
+    "response":
+
+    {"opModeList":["AngularRampLogger","BLUE_BUCKET_AUTONOMOUS","BLUE_DIVE_AUTONOMOUS","Basic Drive","Basic drive","Basic: Iterative OpMode","DeadWheelDirectionDebugger","Enable/Disable Dashboard","ForwardPushTest","ForwardRampLogger","LateralPushTest","LateralRampLogger","LocalizationTest","ManualFeedbackTuner","ManualFeedforwardTuner","MecanumMotorDirectionDebugger","Motor Spin Test","Omniwheel","RED_BUCKET_AUTONOMOUS","RED_DIVE_AUTONOMOUS","Robot: Auto Drive By Encoder","Robot: Auto Drive By Time","Robot: Auto Drive To Line","Robot: Teleop Tank","SplineTest","TeamAutonomousRed","Water Drive","test2"],"type":"RECEIVE_OP_MODE_LIST"}
+
+}

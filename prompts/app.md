@@ -880,3 +880,8 @@ rq, i need you to add a "buffer bar" at the top of the application so that i can
 # 2/16/2026 6:43pm (Claude)
 
 ok, ok! it works!! now, how do i package this up, add an icon, name, id, etc., sign it, put it in a dmg, and distribute? i'm planning on distributing only to my friends. guide me through the process, i'll practice by "distributing" the current version.
+
+# 3/7/2026 4:02pm (Claude)
+
+[main.css], [index.html], [main.js]
+rn this is really good. quick fixes: the "fade animation" should just fade WITHOUT an interstitial (so it should "crossfade" (idk what is supposed to be called) original is fading out WHILE new is fading in, without any interstitials). also, the titlebar has one problem: the traffic lights arent centered. they need to be centered with the rest of the text, and ALSO the margin on the left of the traffic lights should be whatever it is from the top/bottom (so all equal). again, the margin btwn the text & traffic lights should the same as the left, top and bottom margins. last fix, the task iframe region doesnt allow for scroll, which is a bug. fix that pls. DO NOT STRAY AWAY FROM MY CODING STYLE. ONLY EDIT INDEX.HTML, MAIN.CSS AND MAIN>JS (ONLY IF NEEDED). DO NOT MAKE ANY HUGE CAHNGES OTHER THAN WHAT I SAID. DO NOT DO ANYTHING OTHER THAN WHAT I SAID. DO NOT ADD ANY COMMENTS BESIDES THOSE THAT FOLLOW EXISTING STRUCTURE. DO NOT BREAK ANYTHING. ETC. ETC.

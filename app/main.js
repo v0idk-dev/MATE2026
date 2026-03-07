@@ -54,7 +54,7 @@ function createWindow() {
             contextIsolation: true,
         },
         titleBarStyle: 'hidden',  // ← Change from 'hiddenInset' to 'hidden'
-        trafficLightPosition: { x: 15, y: 15 },  // ← Add this line (positions red/yellow/green buttons)
+        trafficLightPosition: { x: 12, y: 8 },  // ← Add this line (positions red/yellow/green buttons)
         backgroundColor: '#1a1a1a'
     });
 

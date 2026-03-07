@@ -1,0 +1,11 @@
+{
+
+"message": 
+
+    {"type":"GET_ROBOT_STATUS"},
+
+"response": 
+
+    {"status":{"activeOpMode":"$Stop$Robot$","activeOpModeStatus":"RUNNING","available":true,"batteryVoltage":14.097,"enabled":true,"errorMessage":"","warningMessage":"The Driver Station app is obsolete. You should install the new version for this FTC season."},"type":"RECEIVE_ROBOT_STATUS"}
+    
+}

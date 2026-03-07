@@ -1,5 +1,3 @@
-let currentMode = 'plates';
-
 const leftInput = document.getElementById('left-image');
 const rightInput = document.getElementById('right-image');
 const leftPreview = document.getElementById('left-preview');
@@ -31,59 +29,10 @@ setupUpload(leftInput, leftPreview, 'left-upload');
 setupUpload(rightInput, rightPreview, 'right-upload');
 setupUpload(pipeInput, pipePreview, 'pipe-upload');
 
-function switchMode(mode) {
-    currentMode = mode;
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
-
-    document.getElementById('plates-mode').style.display = mode === 'plates' ? 'block' : 'none';
-    document.getElementById('pipes-mode').style.display = mode === 'pipes' ? 'block' : 'none';
-
-    document.getElementById('results-section').style.display = 'none';
-    document.getElementById('error-section').style.display = 'none';
-
-    if (mode === 'plates') {
-        document.getElementById('analyze-btn-text').textContent = 'Analyze Distance';
-    } else {
-        document.getElementById('analyze-btn-text').textContent = 'Measure Pipes';
-    }
-
-    checkReady();
-}
-
 function checkReady() {
-    if (currentMode === 'plates') {
-        const hasLeft = leftInput.files && leftInput.files.length > 0;
-        const hasRight = rightInput.files && rightInput.files.length > 0;
-        analyzeBtn.disabled = !(hasLeft && hasRight);
-    } else {
-        const hasPipe = pipeInput.files && pipeInput.files.length > 0;
-        analyzeBtn.disabled = !hasPipe;
-    }
-}
-
-function toggleParams() {
-    const panel = document.getElementById('params-panel');
-    const toggle = document.getElementById('params-toggle');
-    if (panel.style.display === 'none') {
-        panel.style.display = 'grid';
-        toggle.textContent = '\u2212';
-    } else {
-        panel.style.display = 'none';
-        toggle.textContent = '+';
-    }
-}
-
-function togglePipeParams() {
-    const panel = document.getElementById('pipe-params-panel');
-    const toggle = document.getElementById('pipe-params-toggle');
-    if (panel.style.display === 'none') {
-        panel.style.display = 'grid';
-        toggle.textContent = '\u2212';
-    } else {
-        panel.style.display = 'none';
-        toggle.textContent = '+';
-    }
+    const hasLeft = leftInput.files && leftInput.files.length > 0;
+    const hasRight = rightInput.files && rightInput.files.length > 0;
+    analyzeBtn.disabled = !(hasLeft && hasRight);
 }
 
 function toggleRaw() {
@@ -109,20 +58,15 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 async function runAnalysis() {
     const formData = new FormData();
-    formData.append('mode', currentMode);
+    formData.append('mode', 'plates');
 
-    if (currentMode === 'plates') {
-        formData.append('left_image', leftInput.files[0]);
-        formData.append('right_image', rightInput.files[0]);
-        formData.append('focal_length', document.getElementById('focal-length').value);
-        formData.append('sensor_width', document.getElementById('sensor-width').value);
-        formData.append('baseline', document.getElementById('baseline').value);
-        formData.append('plate_width', document.getElementById('plate-width').value);
-        formData.append('plate_height', document.getElementById('plate-height').value);
-    } else {
-        formData.append('image', pipeInput.files[0]);
-        formData.append('ref_square_side', document.getElementById('ref-square-side').value);
-    }
+    formData.append('left_image', leftInput.files[0]);
+    formData.append('right_image', rightInput.files[0]);
+    formData.append('focal_length', document.getElementById('focal-length').value);
+    formData.append('sensor_width', document.getElementById('sensor-width').value);
+    formData.append('baseline', document.getElementById('baseline').value);
+    formData.append('plate_width', document.getElementById('plate-width').value);
+    formData.append('plate_height', document.getElementById('plate-height').value);
 
     document.getElementById('loading-section').style.display = 'block';
     document.getElementById('results-section').style.display = 'none';
@@ -130,9 +74,7 @@ async function runAnalysis() {
     analyzeBtn.disabled = true;
 
     const loadingSub = document.getElementById('loading-sub-text');
-    loadingSub.textContent = currentMode === 'plates'
-        ? 'Detecting purple plates, matching features, computing distance'
-        : 'Detecting reference squares and measuring PVC pipes';
+    loadingSub.textContent = 'Detecting purple plates, matching features, computing distance';
 
     try {
         const response = await fetch('/api/analyze', {
@@ -150,11 +92,7 @@ async function runAnalysis() {
             return;
         }
 
-        if (currentMode === 'plates') {
-            showPlateResults(data);
-        } else {
-            showPipeResults(data);
-        }
+        showPlateResults(data);
 
     } catch (err) {
         document.getElementById('loading-section').style.display = 'none';

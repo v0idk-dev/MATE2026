@@ -8,7 +8,9 @@ This /app folder stores all code for the distributable app. To package and distr
 ------------------------------------------  APP  FILES  -----------------------------------------
 web/                              - all web-related stuff
   app.py                          - Flask backend (routing, task integration)
-  templates/index.html            - Frontend HTML
+  templates/                      - Frontend HTML
+    index.html                    - Main app file
+    x_y.html                      - Task x.y helper html
   static/css/style.css            - Custom dark theme styling
   static/js/app.js                - Frontend JavaScript
 scripts/                          - all cpp scripts for each task

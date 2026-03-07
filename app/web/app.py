@@ -129,6 +129,14 @@ def parse_pipe_output(text):
 def index():
     return render_template('index.html')
 
+@app.route('/t/1_2')
+def t1_2():
+    return render_template('1_2.html')
+
+@app.route('/t/2_2')
+def t2_2():
+    return render_template('2_2.html')
+
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():

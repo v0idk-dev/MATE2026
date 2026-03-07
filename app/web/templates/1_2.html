@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MATE ROV — Vision Tools</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../static/css/main.css">
+</head>
+<body>
+
+<header class="app-header">
+    <h1>MATE ROV Vision Tools</h1>
+    <p class="subtitle">Stereo distance measurement & PVC pipe length analysis</p>
+</header>
+
+<div class="app-container">
+
+    <!-- ── Plates mode ── -->
+    <div id="plates-mode">
+
+        <div class="card">
+            <div class="section-title">Stereo Input Data</div>
+            <div class="upload-grid">
+                <div class="upload-card" id="left-upload">
+                    <input type="file" id="left-image" accept="image/*" hidden>
+                    <div class="upload-placeholder" onclick="document.getElementById('left-image').click()">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                        </div>
+                        <span class="upload-label">Left Camera (CH01)</span>
+                        <span class="upload-hint">Click to select</span>
+                    </div>
+                    <img id="left-preview" class="image-preview" alt="">
+                </div>
+                <div class="upload-card" id="right-upload">
+                    <input type="file" id="right-image" accept="image/*" hidden>
+                    <div class="upload-placeholder" onclick="document.getElementById('right-image').click()">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                        </div>
+                        <span class="upload-label">Right Camera (CH02)</span>
+                        <span class="upload-hint">Click to select</span>
+                    </div>
+                    <img id="right-preview" class="image-preview" alt="">
+                </div>
+            </div>
+            <div class="params-grid" id="params-panel">
+                <div class="param-group">
+                    <label for="focal-length">Focal Length (mm)</label>
+                    <input type="number" id="focal-length" value="35.0" step="0.1" min="1">
+                </div>
+                <div class="param-group">
+                    <label for="sensor-width">Sensor Width (mm)</label>
+                    <input type="number" id="sensor-width" value="36.0" step="0.1" min="1">
+                </div>
+                <div class="param-group">
+                    <label for="baseline">Camera Baseline (m)</label>
+                    <input type="number" id="baseline" value="0.1" step="0.01" min="0.001">
+                </div>
+                <div class="param-group">
+                    <label for="plate-width">Plate Width (m)</label>
+                    <input type="number" id="plate-width" value="0.3" step="0.01" min="0.01">
+                </div>
+                <div class="param-group">
+                    <label for="plate-height">Plate Height (m)</label>
+                    <input type="number" id="plate-height" value="0.2" step="0.01" min="0.01">
+                </div>
+            </div>
+            <button id="analyze-btn" class="calc-btn" onclick="runAnalysis()" disabled>
+                <span id="analyze-btn-text">Analyze Distance</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-section" class="loading-section" style="display:none">
+        <div class="spinner"></div>
+        <p>Analyzing…</p>
+        <p class="loading-sub" id="loading-sub-text">Processing Inputs</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error-section" style="display:none">
+        <div class="error-card">
+            <span class="error-icon">!</span>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <!-- ── Results ── -->
+    <div id="results-section" style="display:none">
+
+        <!-- Annotated output image -->
+        <div class="card scard">
+            <div class="section-title" id="results-title">Annotated Output</div>
+            <div id="annotated-image-container" class="annotated-container"></div>
+        </div>
+
+        <!-- Plate results -->
+        <div id="plate-results" style="display:none">
+
+            <div class="card scard">
+                <div class="section-title">Plate Distances</div>
+                <div id="plate-distances-list" class="plate-distances-grid"></div>
+            </div>
+
+            <div class="result-card">
+                <h3>Stereo Geometry</h3>
+                <div class="stat-list" id="stereo-stats"></div>
+            </div>
+
+        </div>
+
+        <!-- Pipe results -->
+        <div id="pipe-results" style="display:none">
+
+            <div class="card scard">
+                <div class="section-title">Pipe Lengths</div>
+                <div id="pipe-lengths-list" class="plate-distances-grid"></div>
+            </div>
+
+            <div class="result-card">
+                <h3>Scale Calibration</h3>
+                <div class="stat-list" id="scale-stats"></div>
+            </div>
+
+        </div>
+
+        <!-- Visualization tabs -->
+        <div class="card scard">
+            <div class="section-title">Visualization</div>
+            <div class="tabs">
+                <button class="tab active" data-tab="uploaded">Input Images</button>
+                <button class="tab" data-tab="detections">Detections</button>
+                <button class="tab" data-tab="matches">Feature Matches</button>
+                <button class="tab" data-tab="epipolar">Epipolar Lines</button>
+            </div>
+            <div class="tab-content">
+                <div class="tab-panel active" id="panel-uploaded"></div>
+                <div class="tab-panel" id="panel-detections"></div>
+                <div class="tab-panel" id="panel-matches"></div>
+                <div class="tab-panel" id="panel-epipolar"></div>
+            </div>
+        </div>
+
+        <!-- Raw output -->
+        <div class="raw-output-section">
+            <div class="raw-header" onclick="toggleRaw()">
+                <h3>Raw Console Output</h3>
+                <span class="toggle-icon" id="raw-toggle">+</span>
+            </div>
+            <pre id="raw-output" style="display:none"></pre>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="../static/js/1_2.js"></script>
+</body>
+</html>
