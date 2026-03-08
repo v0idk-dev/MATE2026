@@ -1,0 +1,9 @@
+path: dataset
+
+train: images/train
+val: images/val
+
+names:
+  0: green_crab
+  1: jonah_crab
+  2: rock_crab
