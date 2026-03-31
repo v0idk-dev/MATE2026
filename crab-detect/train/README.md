@@ -2,7 +2,7 @@
 
 ## Setup
 
-First, install python 3.11. Then, run the following commands:
+First, `cd /crab-detect/train/` and install python 3.11. Then, run the following commands:
 
 ```bash
 python3.11 -m venv venv
@@ -18,6 +18,7 @@ Create the following directories according to this file structure:
 data.yaml                         - data definitions and structure
 README.md                         - this file
 check_labels.py                   - label validator
+fix_tal.py                        - tal patch applier
 ----------------------------------------  INSTALLED FILES  ---------------------------------------
 venv/                             - python environment
 yolov8n.pt                        - base YOLO model
@@ -37,9 +38,10 @@ Now run these commands:
 ```bash
 rm dataset/labels/*.cache
 python ./check_labels.py
+python ./fix_tal.py
 ```
 
-Make sure the python script returns no issues, otherwise the model may fail to finish full training.
+Make sure the `check_labels` python script returns no issues AND the `fix_tal` applies both patches (on first run), otherwise the model may fail while training.
 
 ## Training
 
@@ -56,4 +58,11 @@ device=mps \
 workers=4 \
 fliplr=0.5 \
 scale=0.3 # Higher values may increase chance of failing
+```
+
+## Running
+
+```bash
+cd ../
+yolo detect predict model=models/M26.CD.P1.300__3.6.2026_21.54/outputs/main.3_81.pt source=train/dataset/images/val conf=0.50
 ```
