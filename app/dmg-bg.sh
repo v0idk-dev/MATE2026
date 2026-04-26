@@ -21,8 +21,8 @@ PYTHON="$SCRIPT_DIR/app/Resources/python-runtime/bin/python3"
 FONT_REGULAR="$SCRIPT_DIR/build/SpaceMono-Regular.ttf"
 FONT_BOLD="$SCRIPT_DIR/build/SpaceMono-Bold.ttf"
 
-if [[ ! -x "$PYTHON" ]];                          then echo "✗  Python runtime not found at: $PYTHON"; exit 1; fi
-if [[ ! -f "$FONT_REGULAR" || ! -f "$FONT_BOLD" ]]; then echo "✗  Space Mono fonts not found in build/"; exit 1; fi
+if [[ ! -x "$PYTHON" ]];                          then echo "✗ Python runtime not found at: $PYTHON"; exit 1; fi
+if [[ ! -f "$FONT_REGULAR" || ! -f "$FONT_BOLD" ]]; then echo "✗ Space Mono fonts not found in build/"; exit 1; fi
 
 "$PYTHON" - "$VERSION" "$OUTPUT" "$FONT_REGULAR" "$FONT_BOLD" <<'PYEOF'
 import sys
@@ -39,9 +39,9 @@ FONT_BLD = sys.argv[4]
 LABEL_OFFSET  = 34    # How far below icon CENTER the pill top starts (px at 1x)
                       # Negative = above center, positive = below center
 
-LABEL_TEXT_PX = 10    # Controls pill height via line height (text size approximation)
+LABEL_TEXT_PX = 11    # Controls pill height via line height (text size approximation)
 
-APP_PILL_W    = 130   # Width of app icon pill (px at 1x)
+APP_PILL_W    = 140   # Width of app icon pill (px at 1x)
                       # "MATE 2026 Robot Controller" ≈ 160px at 12pt system font
 APPS_PILL_W   = 100    # Width of Applications pill (px at 1x)
                       # "Applications" ≈ 75px at 12pt system font

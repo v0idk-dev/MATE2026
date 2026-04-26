@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Foundation
 import SwiftUI
 
@@ -746,4 +747,33 @@ public func settings_hide() {
     DispatchQueue.main.async {
         SettingsWindowManager.shared.hide()
     }
+}
+
+// Returns a JSON array of AVFoundation camera devices:
+// [{"uniqueID": "...", "name": "...", "builtin": true}, ...]
+// Called synchronously from the .mm binding on a background thread — safe
+// because AVCaptureDevice.DiscoverySession is thread-safe.
+@_cdecl("list_cameras_json")
+public func list_cameras_json() -> UnsafeMutablePointer<CChar>? {
+    // Use the same flat device list OpenCV's CAP_AVFOUNDATION backend uses internally,
+    // so our indices are guaranteed to match cv2.VideoCapture(index, CAP_AVFOUNDATION).
+    // DeskView cameras are excluded — OpenCV can enumerate them but can't open them.
+    let all = AVCaptureDevice.devices(for: .video)
+    var entries: [[String: Any]] = []
+    var opencvIndex = 0
+    for device in all {
+        let isDesk = device.deviceType == .deskViewCamera
+        entries.append([
+            "uniqueID": device.uniqueID,
+            "name":     device.localizedName,
+            "builtin":  device.deviceType == .builtInWideAngleCamera,
+            "index":    opencvIndex,
+            "hidden":   isDesk,
+        ])
+        opencvIndex += 1
+    }
+    guard let data   = try? JSONSerialization.data(withJSONObject: entries),
+          let string = String(data: data, encoding: .utf8)
+    else { return strdup("[]") }
+    return strdup(string)  // caller must free()
 }

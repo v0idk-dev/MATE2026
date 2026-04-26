@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, ipcMain, nativeImage, nativeTheme } = require('electron');
 const { spawn, exec }  = require('child_process');
+const http = require('http');
 const path = require('path');
 const fs   = require('fs');
 
@@ -330,7 +331,7 @@ function startFlaskServer() {
     console.log('Starting server...');
     flaskProcess = spawn(python, [script], {
         cwd: path.join(root, 'web'),
-        env: { ...process.env }
+        env: { ...process.env, ELECTRON_IS_PACKAGED: app.isPackaged ? '1' : '' }
     });
     flaskProcess.stdout.on('data', d => {
         try {
@@ -374,6 +375,29 @@ function createWindow() {
 
 app.whenReady().then(() => {
     ipcMain.on('open-settings', () => openSettings());
+
+    ipcMain.handle('list-cameras', () => {
+        const addon = loadSettingsAddon();
+        if (!addon || !addon.listCameras) return '[]';
+        try { return addon.listCameras(); }
+        catch { return '[]'; }
+    });
+
+    // Tiny internal API server on 5002 so Flask can call listCameras via the addon.
+    http.createServer((req, res) => {
+        if (req.method === 'GET' && req.url === '/cameras') {
+            const addon = loadSettingsAddon();
+            let json = '[]';
+            if (addon && addon.listCameras) {
+                try { json = addon.listCameras(); } catch {}
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(json);
+        } else {
+            res.writeHead(404);
+            res.end();
+        }
+    }).listen(5002, '127.0.0.1');
 
     app.setAboutPanelOptions({
         applicationName:    app.name,

@@ -1,7 +1,7 @@
 {
   "name": "mate-2026-robot-controller",
-  "version": "0.1.0",
-  "buildNumber": 43,
+  "version": "0.1.1",
+  "buildNumber": 51,
   "description": "MATE 2026 ROV Control System for SFS Robotics",
   "author": "Dogukan Koc",
   "main": "main.js",
@@ -92,6 +92,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "models",
+        "to": "models",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "files": [
@@ -110,7 +117,8 @@
       "**/*.dylib",
       "app/Resources/**/*",
       "scripts/**/*",
-      "web/**/*"
+      "web/**/*",
+      "models/**/*"
     ]
   },
   "keywords": [],

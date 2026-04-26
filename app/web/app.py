@@ -60,66 +60,23 @@ def _settings_read() -> dict:
 # We cross-reference with AVFoundation order via a cached Swift run (only on
 # first call or when the list changes), so cv2 indices stay correct.
 
-_cam_list_cache      = []   # last known [{index, name, builtin}]
-_cam_list_cache_key  = ''   # hash of sp output to detect changes
-_cam_list_lock       = threading.Lock()
+_cam_list_cache = []   # last known [{uniqueID, name, builtin}]
+_cam_list_lock  = threading.Lock()
 
 def list_cameras():
-    """Return [{index, name, builtin}] — fast native macOS enumeration.
-    Uses system_profiler for quick presence check; Swift for index ordering.
-    Result is cached and only recomputed when the device list changes."""
-    global _cam_list_cache, _cam_list_cache_key
-
+    """Return [{uniqueID, name, builtin}] via the Electron addon's AVFoundation call.
+    The Electron main process exposes this on 127.0.0.1:5002/cameras."""
+    import urllib.request
     try:
-        sp = subprocess.run(
-            ['system_profiler', 'SPCameraDataType', '-json'],
-            capture_output=True, text=True, timeout=5
-        )
-        sp_key = sp.stdout[:512]  # cheap change-detection fingerprint
+        with urllib.request.urlopen('http://127.0.0.1:5002/cameras', timeout=3) as r:
+            cameras = json.loads(r.read().decode())
+        with _cam_list_lock:
+            if cameras:
+                _cam_list_cache[:] = cameras
+        return cameras
     except Exception:
         with _cam_list_lock:
             return list(_cam_list_cache)
-
-    with _cam_list_lock:
-        if sp_key == _cam_list_cache_key and _cam_list_cache:
-            return list(_cam_list_cache)
-
-    # Device list changed — re-enumerate order via AVFoundation Swift snippet
-    cameras = []
-    try:
-        swift_src = (
-            "import AVFoundation\n"
-            "let s = AVCaptureDevice.DiscoverySession("
-            "deviceTypes: [.builtInWideAngleCamera, .external],"
-            "mediaType: .video, position: .unspecified)\n"
-            "for (i, d) in s.devices.enumerated() {\n"
-            "    let b = d.deviceType == .builtInWideAngleCamera ? 1 : 0\n"
-            '    print("\\(i)\\t\\(b)\\t\\(d.localizedName)")\n'
-            "}"
-        )
-        with tempfile.NamedTemporaryFile(suffix='.swift', delete=False, mode='w') as tf:
-            tf.write(swift_src)
-            tf_path = tf.name
-        result = subprocess.run(
-            ['swift', tf_path],
-            capture_output=True, text=True, timeout=15
-        )
-        os.unlink(tf_path)
-        for line in result.stdout.splitlines():
-            parts = line.split('\t', 2)
-            if len(parts) == 3:
-                cameras.append({
-                    'index':   int(parts[0]),
-                    'builtin': parts[1] == '1',
-                    'name':    parts[2].strip(),
-                })
-    except Exception:
-        pass
-
-    with _cam_list_lock:
-        _cam_list_cache_key = sp_key
-        _cam_list_cache     = cameras
-    return list(cameras)
 
 # ── Background frame reader ───────────────────────────────────────────────────
 
@@ -154,17 +111,17 @@ def _start_reader():
     _reader_thread = threading.Thread(target=_bg_reader, daemon=True)
     _reader_thread.start()
 
-def _open_camera(index: int):
+def _open_camera(avf_index: int):
     global _cam_cap, _cam_index, _cam_seq, _latest_frame, _frame_seq
     with _cam_lock:
         if _cam_cap is not None:
             _cam_cap.release()
             _cam_cap = None
             _cam_index = None
-        cap = cv2.VideoCapture(index)
+        cap = cv2.VideoCapture(avf_index, cv2.CAP_AVFOUNDATION)
         if cap.isOpened():
             _cam_cap   = cap
-            _cam_index = index
+            _cam_index = avf_index
             _cam_seq  += 1
     with _frame_lock:
         _latest_frame = None
@@ -301,12 +258,15 @@ def api_cameras():
 @app.route('/api/camera/select', methods=['POST'])
 def api_camera_select():
     data = request.get_json(force=True)
-    index = data.get('index')
-    if index is None:
+    unique_id = data.get('uniqueID')
+    if not unique_id:
         _close_camera()
-        return jsonify({'ok': True, 'index': None})
-    _open_camera(int(index))
-    return jsonify({'ok': True, 'index': _cam_index})
+        return jsonify({'ok': True, 'uniqueID': None})
+    cam = next((c for c in list_cameras() if c.get('uniqueID') == unique_id), None)
+    if cam is None:
+        return jsonify({'error': 'Camera not found'}), 404
+    _open_camera(int(cam['index']))
+    return jsonify({'ok': True, 'uniqueID': unique_id})
 
 @app.route('/api/settings/default_camera')
 def api_settings_default_camera():
@@ -826,7 +786,8 @@ def analyze():
 
 _init_from_settings()
 _start_reader()
-subprocess.run(['make', '-C', TASK1_2_DIR, 'all'], capture_output=True)
+if not os.environ.get('ELECTRON_IS_PACKAGED'):
+    subprocess.run(['make', '-C', TASK1_2_DIR, 'all'], capture_output=True)
 
 if __name__ == '__main__':
     import signal, socket as _socket

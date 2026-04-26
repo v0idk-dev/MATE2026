@@ -790,7 +790,7 @@ function updateCsiActiveStates() {
 async function _refreshCameraList() {
   try {
     const res  = await fetch('/api/cameras');
-    const cams = (await res.json()).cameras || [];
+    const cams = ((await res.json()).cameras || []).filter(c => !c.hidden);
 
     const listKey = JSON.stringify(cams.map(c => c.name));
     const sourceSelect = document.getElementById('csi-source-select');
@@ -803,21 +803,21 @@ async function _refreshCameraList() {
     while (sourceSelect.options.length > 1) sourceSelect.remove(1);
     cams.forEach(c => {
       const opt = document.createElement('option');
-      opt.value = c.index;
+      opt.value = c.uniqueID;
       opt.textContent = c.name + (c.builtin ? ' (built-in)' : '');
       sourceSelect.appendChild(opt);
     });
 
-    // Re-select by name (handles index shifts from OBS/etc)
+    // Re-select by name (uniqueID stays stable across index shifts from OBS/etc)
     if (_selectedCamName) {
       const match = cams.find(c => c.name === _selectedCamName);
       if (match) {
-        sourceSelect.value = String(match.index);
-        if (Number(match.index) !== Number(activeCameraIndex)) {
-          activeCameraIndex = match.index;
+        sourceSelect.value = match.uniqueID;
+        if (match.uniqueID !== activeCameraIndex) {
+          activeCameraIndex = match.uniqueID;
           await fetch('/api/camera/select', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ index: activeCameraIndex })
+            body: JSON.stringify({ uniqueID: activeCameraIndex })
           });
           refreshCamFeeds();
         }
@@ -828,7 +828,7 @@ async function _refreshCameraList() {
       activeCameraIndex = null;
       await fetch('/api/camera/select', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: null })
+        body: JSON.stringify({ uniqueID: null })
       });
       refreshCamFeeds();
       return;
@@ -840,8 +840,8 @@ async function _refreshCameraList() {
       const defaultName = (await sr.json()).name || null;
       const picked = defaultName ? cams.find(c => c.name === defaultName) : null;
       if (picked) {
-        sourceSelect.value = String(picked.index);
-        await selectCameraSource(picked.index);
+        sourceSelect.value = picked.uniqueID;
+        await selectCameraSource(picked.uniqueID);
       }
     } catch (_) {}
   } catch (_) {}
@@ -852,22 +852,22 @@ async function initCamera() {
   setInterval(_refreshCameraList, 3000);
 }
 
-async function selectCameraSource(index) {
-  activeCameraIndex = (index === null || index === undefined || index === '') ? null : index;
+async function selectCameraSource(uniqueID) {
+  activeCameraIndex = (uniqueID === null || uniqueID === undefined || uniqueID === '') ? null : uniqueID;
   const sourceSelect = document.getElementById('csi-source-select');
-  const selOpt = [...sourceSelect.options].find(o => o.value === String(activeCameraIndex));
+  const selOpt = [...sourceSelect.options].find(o => o.value === activeCameraIndex);
   // Store the raw device name (strip the " (built-in)" suffix we may have added)
   _selectedCamName = selOpt ? selOpt.textContent.replace(/ \(built-in\)$/, '') : null;
   await fetch('/api/camera/select', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ index: activeCameraIndex })
+    body: JSON.stringify({ uniqueID: activeCameraIndex })
   });
   refreshCamFeeds();
 }
 
 document.getElementById('csi-source-select').addEventListener('change', async function(e) {
   e.stopPropagation();
-  const val = this.value === '' ? null : parseInt(this.value, 10);
+  const val = this.value === '' ? null : this.value;
   await selectCameraSource(val);
 });
 

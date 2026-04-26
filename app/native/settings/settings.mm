@@ -13,6 +13,7 @@
 
 static void* g_lib = nullptr;
 typedef void (*VoidFn)(void);
+typedef const char* (*StrFn)(void);
 
 static bool LoadUI() {
     if (g_lib) return true;
@@ -59,10 +60,21 @@ Napi::Value SetManaged(const Napi::CallbackInfo& info) {
     return info.Env().Undefined();
 }
 
+Napi::Value ListCameras(const Napi::CallbackInfo& info) {
+    if (!LoadUI()) return info.Env().Null();
+    auto fn = (StrFn)dlsym(g_lib, "list_cameras_json");
+    if (!fn) return info.Env().Null();
+    const char* json = fn();
+    auto result = Napi::String::New(info.Env(), json ? json : "[]");
+    free((void*)json);
+    return result;
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-    exports.Set("open",       Napi::Function::New(env, Open));
-    exports.Set("close",      Napi::Function::New(env, Close));
-    exports.Set("setManaged", Napi::Function::New(env, SetManaged));
+    exports.Set("open",         Napi::Function::New(env, Open));
+    exports.Set("close",        Napi::Function::New(env, Close));
+    exports.Set("setManaged",   Napi::Function::New(env, SetManaged));
+    exports.Set("listCameras",  Napi::Function::New(env, ListCameras));
     // Load dylib and register scene at addon init time
     dispatch_async(dispatch_get_main_queue(), ^{ LoadUI(); });
     return exports;

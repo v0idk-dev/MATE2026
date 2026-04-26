@@ -84,8 +84,17 @@ Firstly, `cd app`.
 
 ### Python
 
+Downloads a **python-build-standalone** release — a fully self-contained Python with stdlib included, no Homebrew dependency, no symlinks.
+
 ```bash
-python3 -m venv --copies app/Resources/python-runtime
+# Download and extract a standalone Python 3.13 (arm64, macOS)
+curl -L "https://github.com/astral-sh/python-build-standalone/releases/download/20250702/cpython-3.13.5+20250702-aarch64-apple-darwin-install_only_stripped.tar.gz" -o /tmp/python-standalone.tar.gz
+tar -xzf /tmp/python-standalone.tar.gz -C /tmp
+cp -R /tmp/python app/Resources/python-runtime
+cp app/Resources/python-runtime/bin/python3.13 app/Resources/python-runtime/bin/python3
+rm -rf /tmp/python /tmp/python-standalone.tar.gz
+
+# Install required packages into the standalone runtime
 app/Resources/python-runtime/bin/python3 -m pip install opencv-python blinker click colorama flask itsdangerous jinja2 markupsafe packaging werkzeug numpy ultralytics pillow dmgbuild
 ```
 
