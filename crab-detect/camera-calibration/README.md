@@ -36,6 +36,7 @@ python capture_calibration_images.py
 ```
 
 Controls:
+
 - Press `c` to capture an image
 - Press `q` or Escape to quit
 
@@ -50,6 +51,7 @@ python camera_calibration.py
 ```
 
 The calibration results will be saved in the `output` directory:
+
 - `calibration_data.pkl`: Complete calibration data in pickle format
 - `camera_matrix.txt`: Camera matrix in text format
 - `distortion_coefficients.txt`: Distortion coefficients in text format
@@ -64,6 +66,7 @@ python live_undistortion.py
 ```
 
 Controls:
+
 - Press `d` to toggle between distorted and undistorted view
 - Press `q` to quit
 

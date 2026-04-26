@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crab Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../static/css/main.css">
+</head>
+<body>
+
+<header class="app-header">
+    <h1>Crab Detection</h1>
+    <p class="subtitle">YOLOv8 crab species identification — Green · Rock · Jonah</p>
+</header>
+
+<div class="app-container">
+
+    <!-- ── Upload card ── -->
+    <div class="card">
+        <div class="section-title">Image Input</div>
+        <div class="cd-upload-card" id="cd-upload-card">
+            <input type="file" id="cd-file-input" accept="image/*" hidden>
+            <div class="cd-upload-placeholder" id="cd-upload-placeholder" onclick="document.getElementById('cd-file-input').click()">
+                <div class="upload-icon">
+                    <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                </div>
+                <span class="upload-label">Drop image or click to select</span>
+                <span class="upload-hint">JPG · PNG · WEBP</span>
+            </div>
+            <div class="cd-img-preview-wrap" id="cd-img-preview-wrap" style="display:none">
+                <img id="cd-preview-img" class="cd-preview-img" alt="">
+                <button class="cd-img-clear" id="cd-img-clear" title="Remove image">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Model + Parameters card ── -->
+    <div class="card">
+        <div class="section-title">Model & Parameters</div>
+        <div class="input-grid">
+            <div class="field">
+                <label>Model</label>
+                <select id="cd-model-select" class="cd-select">
+                    <option value="">Loading models…</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Display</label>
+                <select id="cd-display-select" class="cd-select" onchange="setFilter(this.value === 'green' ? 'green' : 'all')">
+                    <option value="all">All Species</option>
+                    <option value="green">Green Crabs Only</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Confidence Threshold</label>
+                <div class="hint">Minimum score to report a detection (0–1)</div>
+                <div class="cd-slider-wrap">
+                    <input type="range" id="cd-conf" class="cd-slider" min="1" max="99" value="25" step="1">
+                    <span class="cd-slider-val" id="cd-conf-val">0.25</span>
+                </div>
+            </div>
+            <div class="field">
+                <label>IoU Threshold</label>
+                <div class="hint">Overlap % above which duplicate boxes are removed (0–1)</div>
+                <div class="cd-slider-wrap">
+                    <input type="range" id="cd-iou" class="cd-slider" min="10" max="90" value="45" step="5">
+                    <span class="cd-slider-val" id="cd-iou-val">0.45</span>
+                </div>
+            </div>
+        </div>
+        <div class="action-section">
+            <button class="calc-btn" id="cd-run-btn" onclick="runDetection()" disabled>
+                Run Detection
+            </button>
+            <button class="calc-btn screenshot-btn" id="cd-screenshot-btn" onclick="takeScreenshot()">
+                Screenshot
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Loading ── -->
+    <div id="cd-loading" class="loading-section" style="display:none">
+        <div class="spinner"></div>
+        <p>Running inference…</p>
+        <p class="loading-sub" id="cd-loading-sub">Processing image</p>
+    </div>
+
+    <!-- ── Error ── -->
+    <div id="cd-error" style="display:none">
+        <div class="error-card">
+            <span class="error-icon">!</span>
+            <p id="cd-error-msg"></p>
+        </div>
+    </div>
+
+    <!-- ── Results ── -->
+    <div id="cd-results" style="display:none">
+
+        <!-- Annotated image + filter toggle -->
+        <!-- Reduced vertical padding so title sits same distance from top despite taller header row -->
+        <div class="card scard" style="padding-top: 0.9rem !important;">
+            <div class="cd-results-title-row">
+                <!-- section-title styles applied manually so dot + text stay left-aligned -->
+                <span class="section-title" style="margin-bottom:0">Detection Results</span>
+                <div class="mode-selector cd-filter-selector">
+                    <button class="mode-btn active" id="cd-filter-all" onclick="setFilter('all')">All Species</button>
+                    <button class="mode-btn" id="cd-filter-green" onclick="setFilter('green')">Green Crabs</button>
+                </div>
+            </div>
+            <div class="annotated-container" id="cd-annotated-container">
+                <img id="cd-result-img" class="annotated-img" alt="">
+                <canvas id="cd-result-canvas" class="cd-result-canvas"></canvas>
+            </div>
+            <!-- Download bar -->
+            <div class="cd-download-bar">
+                <button class="cd-download-btn" id="cd-download-btn" onclick="downloadResult()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
+                    Download
+                </button>
+                <span class="cd-download-hint" id="cd-download-hint">Annotated</span>
+            </div>
+        </div>
+
+        <!-- Summary stats -->
+        <div class="result-card scard">
+            <h3>Detection Summary</h3>
+            <div class="stat-list" id="cd-stat-list"></div>
+        </div>
+
+        <!-- Detection table -->
+        <div class="card scard">
+            <div class="section-title">All Detections</div>
+            <div class="cd-det-table" id="cd-det-table"></div>
+        </div>
+
+        <!-- Raw output -->
+        <div class="raw-output-section">
+            <div class="raw-header" onclick="toggleRaw()">
+                <h3>Raw Console Output</h3>
+                <span class="toggle-icon" id="cd-raw-toggle">+</span>
+            </div>
+            <pre id="raw-output" style="display:none"></pre>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+const CLASS_COLORS = {
+    green_crab:  '#22c55e',
+    rock_crab:   '#3b82f6',
+    jonah_crab:  '#ff8800',
+};
+const FALLBACK_COLOR = '#00bfff';
+
+// ── Sliders ──────────────────────────────────────────────────────
+document.getElementById('cd-conf').addEventListener('input', function () {
+    document.getElementById('cd-conf-val').textContent = (this.value / 100).toFixed(2);
+});
+document.getElementById('cd-iou').addEventListener('input', function () {
+    document.getElementById('cd-iou-val').textContent = (this.value / 100).toFixed(2);
+});
+
+// ── Model loader ─────────────────────────────────────────────────
+async function loadModels() {
+    try {
+        const res  = await fetch('/api/crab_models');
+        const data = await res.json();
+        const sel  = document.getElementById('cd-model-select');
+        if (!data.models || data.models.length === 0) {
+            sel.innerHTML = '<option value="">No models found in /models/</option>';
+            return;
+        }
+        sel.innerHTML = data.models.map(m =>
+            `<option value="${m.path}">${m.label}</option>`
+        ).join('');
+    } catch (e) {
+        document.getElementById('cd-model-select').innerHTML =
+            '<option value="">Could not load models</option>';
+    }
+}
+loadModels();
+
+// ── File upload ──────────────────────────────────────────────────
+const fileInput   = document.getElementById('cd-file-input');
+const previewImg  = document.getElementById('cd-preview-img');
+const previewWrap = document.getElementById('cd-img-preview-wrap');
+const placeholder = document.getElementById('cd-upload-placeholder');
+const uploadCard  = document.getElementById('cd-upload-card');
+const runBtn      = document.getElementById('cd-run-btn');
+
+let currentFile = null;
+
+fileInput.addEventListener('change', function () {
+    if (this.files && this.files[0]) loadFile(this.files[0]);
+});
+
+uploadCard.addEventListener('dragover',  e => { e.preventDefault(); uploadCard.classList.add('cd-drag'); });
+uploadCard.addEventListener('dragleave', () => uploadCard.classList.remove('cd-drag'));
+uploadCard.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadCard.classList.remove('cd-drag');
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+function loadFile(file) {
+    currentFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+        previewImg.src = e.target.result;
+        placeholder.style.display = 'none';
+        previewWrap.style.display = 'flex';
+        uploadCard.classList.add('cd-has-img');
+        runBtn.disabled = false;
+        hideResults();
+    };
+    reader.readAsDataURL(file);
+}
+
+document.getElementById('cd-img-clear').addEventListener('click', e => {
+    e.stopPropagation();
+    currentFile = null;
+    previewImg.src = '';
+    previewWrap.style.display = 'none';
+    placeholder.style.display = 'flex';
+    uploadCard.classList.remove('cd-has-img');
+    runBtn.disabled = true;
+    hideResults();
+    fileInput.value = '';
+});
+
+// ── Result canvas ────────────────────────────────────────────────
+const resultImg    = document.getElementById('cd-result-img');
+const resultCanvas = document.getElementById('cd-result-canvas');
+const resultCtx    = resultCanvas.getContext('2d');
+
+let currentFilter = 'all';
+let allDetections = [];
+let srcImgW = 0, srcImgH = 0;
+
+function drawResultCanvas(detections) {
+    const dW = resultImg.clientWidth;
+    const dH = resultImg.clientHeight;
+    if (!dW || !dH) return;
+
+    resultCanvas.width        = dW;
+    resultCanvas.height       = dH;
+    resultCanvas.style.width  = dW + 'px';
+    resultCanvas.style.height = dH + 'px';
+    resultCtx.clearRect(0, 0, dW, dH);
+
+    const scale = Math.min(dW / srcImgW, dH / srcImgH);
+    const offX  = (dW - srcImgW * scale) / 2;
+    const offY  = (dH - srcImgH * scale) / 2;
+
+    detections.forEach(det => {
+        const [x1, y1, x2, y2] = det.box;
+        const px = x1 * scale + offX;
+        const py = y1 * scale + offY;
+        const pw = (x2 - x1) * scale;
+        const ph = (y2 - y1) * scale;
+        const color = CLASS_COLORS[det.class] || FALLBACK_COLOR;
+
+        resultCtx.strokeStyle = color;
+        resultCtx.lineWidth   = 1.8;
+        resultCtx.strokeRect(px, py, pw, ph);
+
+        const label = `${det.class.replace(/_/g, ' ')} ${(det.conf * 100).toFixed(0)}%`;
+        const fs    = Math.max(10, Math.min(13, pw * 0.14));
+        resultCtx.font = `700 ${fs}px "Space Mono", monospace`;
+        const tw = resultCtx.measureText(label).width + 8;
+        const th = fs + 6;
+        const ly = py > th + 2 ? py - th - 1 : py + 1;
+        resultCtx.fillStyle = color + 'dd';
+        resultCtx.fillRect(px, ly, tw, th);
+        resultCtx.fillStyle = '#000';
+        resultCtx.fillText(label, px + 4, ly + th - 3);
+    });
+
+    // Update download hint label
+    const hint = document.getElementById('cd-download-hint');
+    if (hint) hint.textContent = currentFilter === 'green' ? 'Annotated (Green Crabs)' : 'Annotated';
+}
+
+function applyFilter() {
+    const dets = currentFilter === 'green'
+        ? allDetections.filter(d => d.class === 'green_crab')
+        : allDetections;
+    drawResultCanvas(dets);
+}
+
+function setFilter(mode) {
+    currentFilter = mode;
+    document.getElementById('cd-filter-all').classList.toggle('active', mode === 'all');
+    document.getElementById('cd-filter-green').classList.toggle('active', mode === 'green');
+    document.getElementById('cd-display-select').value = mode === 'green' ? 'green' : 'all';
+    applyFilter();
+}
+
+new ResizeObserver(() => {
+    if (srcImgW > 0) applyFilter();
+}).observe(resultImg);
+
+// ── Download current view ─────────────────────────────────────────
+function downloadResult() {
+    // Composite: draw source image + canvas overlay into one offscreen canvas
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = srcImgW;
+    offscreen.height = srcImgH;
+    const ctx = offscreen.getContext('2d');
+
+    // Draw original image at full resolution
+    const img = new Image();
+    img.src = resultImg.src;
+    img.onload = () => {
+        ctx.drawImage(img, 0, 0, srcImgW, srcImgH);
+
+        // Re-draw detections at full resolution
+        const dets = currentFilter === 'green'
+            ? allDetections.filter(d => d.class === 'green_crab')
+            : allDetections;
+
+        dets.forEach(det => {
+            const [x1, y1, x2, y2] = det.box;
+            const color = CLASS_COLORS[det.class] || FALLBACK_COLOR;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth   = Math.max(2, srcImgW * 0.002);
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+            const label = `${det.class.replace(/_/g, ' ')} ${(det.conf * 100).toFixed(0)}%`;
+            const fs    = Math.max(14, Math.min(22, (x2 - x1) * 0.08));
+            ctx.font = `700 ${fs}px "Space Mono", monospace`;
+            const tw = ctx.measureText(label).width + 10;
+            const th = fs + 8;
+            const ly = y1 > th + 2 ? y1 - th - 1 : y1 + 1;
+            ctx.fillStyle = color + 'dd';
+            ctx.fillRect(x1, ly, tw, th);
+            ctx.fillStyle = '#000';
+            ctx.fillText(label, x1 + 5, ly + th - 4);
+        });
+
+        // Trigger save-as dialog
+        const suffix  = currentFilter === 'green' ? '_green_crabs' : '_annotated';
+        const baseName = (currentFile ? currentFile.name.replace(/\.[^.]+$/, '') : 'detection') + suffix;
+        const link = document.createElement('a');
+        link.download = baseName + '.png';
+        link.href     = offscreen.toDataURL('image/png');
+        link.click();
+    };
+}
+
+// ── Run detection ─────────────────────────────────────────────────
+async function runDetection() {
+    if (!currentFile) return;
+    const modelPath = document.getElementById('cd-model-select').value;
+    if (!modelPath) { showError('Please select a model.'); return; }
+    const conf = parseFloat(document.getElementById('cd-conf-val').textContent);
+    const iou  = parseFloat(document.getElementById('cd-iou-val').textContent);
+
+    showLoading('Running inference…');
+
+    const fd = new FormData();
+    fd.append('image',      currentFile);
+    fd.append('model_path', modelPath);
+    fd.append('conf',       conf);
+    fd.append('iou',        iou);
+
+    try {
+        const res  = await fetch('/api/crab_detect', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok || data.error) { showError(data.error || 'Detection failed'); return; }
+        showResults(data);
+    } catch (e) {
+        showError('Network error — is the server running?');
+    }
+}
+
+// ── UI states ────────────────────────────────────────────────────
+function hideResults() {
+    document.getElementById('cd-loading').style.display = 'none';
+    document.getElementById('cd-error').style.display   = 'none';
+    document.getElementById('cd-results').style.display = 'none';
+}
+
+function showLoading(msg) {
+    hideResults();
+    document.getElementById('cd-loading').style.display   = 'block';
+    document.getElementById('cd-loading-sub').textContent = msg;
+    runBtn.disabled = true;
+}
+
+function showError(msg) {
+    hideResults();
+    document.getElementById('cd-error').style.display   = 'block';
+    document.getElementById('cd-error-msg').textContent = msg;
+    runBtn.disabled = false;
+}
+
+function showResults(data) {
+    hideResults();
+    runBtn.disabled = false;
+
+    allDetections = data.detections;
+    srcImgW       = data.image_width;
+    srcImgH       = data.image_height;
+    currentFilter = 'all';
+    document.getElementById('cd-filter-all').classList.add('active');
+    document.getElementById('cd-filter-green').classList.remove('active');
+    document.getElementById('cd-display-select').value = 'all';
+
+    resultImg.src    = previewImg.src;
+    resultImg.onload = () => applyFilter();
+    if (resultImg.complete && resultImg.naturalWidth > 0) applyFilter();
+
+    // Summary
+    const counts = {};
+    data.detections.forEach(d => counts[d.class] = (counts[d.class] || 0) + 1);
+    const statRows = [
+        ['Total Detections', data.detections.length],
+        ...Object.entries(counts).map(([cls, n]) => [cls.replace(/_/g, ' '), n]),
+        ['Inference Time',   data.inference_ms + ' ms'],
+        ['Image Size',       `${data.image_width} × ${data.image_height}`],
+    ];
+    document.getElementById('cd-stat-list').innerHTML = statRows.map(([l, v]) =>
+        `<div class="stat-row"><span class="stat-label">${l}</span><span class="stat-value">${v}</span></div>`
+    ).join('');
+
+    // Table
+    const tbl = document.getElementById('cd-det-table');
+    if (data.detections.length === 0) {
+        tbl.innerHTML = '<div class="placeholder"><div>No crabs detected in this image.</div></div>';
+    } else {
+        tbl.innerHTML = `
+        <div class="cd-tbl-header">
+            <span>Species</span><span>Confidence</span><span>Bounding Box</span>
+        </div>
+        ${data.detections.map(d => {
+            const color = CLASS_COLORS[d.class] || FALLBACK_COLOR;
+            return `<div class="cd-tbl-row">
+                <span class="cd-tbl-cls"><span class="cd-cls-dot" style="background:${color}"></span>${d.class.replace(/_/g, ' ')}</span>
+                <span class="cd-tbl-conf" style="color:${color}">${(d.conf * 100).toFixed(1)}%</span>
+                <span class="cd-tbl-box">[${d.box.join(', ')}]</span>
+            </div>`;
+        }).join('')}`;
+    }
+
+    document.getElementById('raw-output').textContent = data.raw_output || 'No output.';
+    document.getElementById('cd-results').style.display = 'block';
+    document.getElementById('cd-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Screenshot from camera ────────────────────────────────────────
+async function takeScreenshot() {
+    let channel = 'CH01';
+    try {
+        const r = await fetch('/api/cameras_config');
+        if (r.ok) {
+            const cfg = await r.json();
+            channel = cfg.screenshots?.crabDetection?.splitChannel || channel;
+        }
+    } catch (_) {}
+    // Use full frame when parent has split view off
+    try { if (!window.parent._splitView) channel = 'full'; } catch (_) {}
+    try {
+        const res = await fetch(`/api/camera/screenshot/${channel}`);
+        if (!res.ok) { alert('No camera frame available.'); return; }
+        const blob = await res.blob();
+        loadFile(new File([blob], 'screenshot.jpg', { type: 'image/jpeg' }));
+    } catch (e) {
+        alert('Screenshot failed: ' + e.message);
+    }
+}
+
+function toggleRaw() {
+    const el  = document.getElementById('raw-output');
+    const tog = document.getElementById('cd-raw-toggle');
+    const open = el.style.display === 'none';
+    el.style.display = open ? 'block' : 'none';
+    tog.textContent  = open ? '−' : '+';
+}
+</script>
+</body>
+</html>

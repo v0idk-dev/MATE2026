@@ -1,4 +1,4 @@
-# MATE 2026 Robot Conroller APP
+# MATE 2026 Robot Controller APP
 
 This /app folder stores all code for the distributable app. To package and distribute the app, please follow the file structure, and do not overwrite the core files. After adding your code, make sure to install the dependencies, test the app, build, sign, and then distribute the .dmg file (for arm64 macs only).
 
@@ -7,12 +7,14 @@ This /app folder stores all code for the distributable app. To package and distr
 ```
 ------------------------------------------  APP  FILES  -----------------------------------------
 web/                              - all web-related stuff
-  app.py                          - Flask backend (routing, task integration)
+  app.py                          - Flask/Werkzeug backend (routing, camera, task integration)
   templates/                      - Frontend HTML
     index.html                    - Main app file
     x_y.html                      - Task x.y helper html
-  static/css/style.css            - Custom dark theme styling
-  static/js/app.js                - Frontend JavaScript
+  static/css/main.css             - app styling
+  static/js/                      - all javascript files here
+     main.js                      - Frontend JavaScript
+     1_2.js                       - js specifically for task 1.2
 scripts/                          - all cpp scripts for each task
   task1_2/                        - i currently only have a prototype for task 1.2
     include/                      - C++ headers
@@ -33,17 +35,25 @@ outputs/                          - All task outputs (generated at runtime) (org
 uploads/                          - All task uploads (organized per task)
   task1_2/                        - Task 1.2 uploads
     {mm}.{dd}.{yyyy}_{hh}.{mm}    - specific upload organized by date&time
+models/                           - AI models for task 2.1 are stored here
 ------------------------------------------  CORE FILES  -----------------------------------------
-app/                              - all app-related things
-  Resources/*                     - the python runtime, cpp dependencies, etc.
-main.js                           - Electron app main proccess
-preload.js                        - bridge btwn Electron & web content
+native/                           - native macOS addons
+  settings/                       - SwiftUI settings window addon
+    SettingsUI.swift              - SwiftUI views (all 4 panes) + window manager
+    settings.mm                   - ObjC++ NAPI addon (dlopen → libSettingsUI.dylib)
+    binding.gyp                   - node-gyp build config
+    package.json                  - addon package (node-addon-api dep)
+    build.sh                      - builds dylib + .node, fixes rpaths
+    build/Release/                - compiled artifacts
+cameras.json                      - camera channel defaults (loaded by Flask + General pane)
+main.js                           - Electron app main process
+preload.js                        - bridge between Electron & web content
 package.json                      - app information
-package-lock.json                 - node.js depedencies list
+package-lock.json                 - node.js dependencies list
 node_modules/*                    - all node.js dependencies
 build/                            - finished app resources
   icon.icns                       - app icon
-entitlements.mac.plist            - macos app entitlements
+entitlements.mac.plist            - macOS app entitlements
 fix-opencv.sh                     - opencv fix script
 build.sh                          - build application
 .gitignore                        - gitignore
@@ -53,7 +63,7 @@ README.md                         - this file
 
 ## Core Files
 
-A backup of these files are store in [/backups](/backups). These files need to be added in addition to the dependencies if they are missing.
+A backup of these files are stored in [/backups](/backups). These files need to be added in addition to the dependencies if they are missing.
 
 ```
 build/*
@@ -70,13 +80,13 @@ README.md (this file)
 ## Installing Dependencies
 
 If Homebrew isn't installed, please install that first at [brew.sh](https://brew.sh).
-Firstly, `cd /app`.
+Firstly, `cd app`.
 
 ### Python
 
 ```bash
 python3 -m venv --copies app/Resources/python-runtime
-app/Resources/python-runtime/bin/pip3 install opencv-python blinker click colorama flask gunicorn itsdangerous jinja2 markupsafe packaging werkzeug flask numpy
+app/Resources/python-runtime/bin/python3 -m pip install opencv-python blinker click colorama flask itsdangerous jinja2 markupsafe packaging werkzeug numpy ultralytics pillow dmgbuild
 ```
 
 ### C++
@@ -104,28 +114,21 @@ stereo_distance: $(OBJS)
 
 ### Electron App
 
+**Must use exactly Electron 40.6.1.** Do not upgrade or downgrade — this version is required for compatibility.
+
 ```bash
-npm init -y
-npm install electron electron-builder --save-dev
-npm install express ws
+npm install electron@40.6.1 electron-builder --save-dev
 ```
 
-Add to `/web/static/css/style.css`:
+### Settings Addon
 
-```css
-body {
-    -webkit-app-region: drag;
-    -webkit-user-select: none;
-}
+**Requires** Xcode 26.x to be installed (for the macOS 26 SDK)
 
-button, input, select, textarea, a, .upload-card, img, [onclick], [href] {
-    -webkit-app-region: no-drag;
-}
-
-.app-container {
-    padding-top: 50px;
-}
+```bash
+bash native/settings/build.sh
 ```
+
+The addon must be rebuilt any time the Electron version changes.
 
 ## Run Commands
 
@@ -140,8 +143,14 @@ npm start
 ## Build Commands
 
 First, find your correct signing identity from `security find-identity -v -p codesigning`. You will need an apple developer account for this.
-Next, make sure ***NOTHING*** shows up when you run this command: `find app/Resources -type l`. If something does, you did something wrong, and the build will fail.
-Also, **WARNING**: do *not* build inside of a storage provider folder, such as Google Drive or iCloud. Build completely on device, or the build will fail, as storage providers add extra metadata not compatible with the build process.
+
+Make sure the following are true before building, or the build will fail:
+
+- ***NOTHING*** shows up when you run `find app/Resources -type l` (no symlinks)
+- `native/settings/build/Release/settings.node` and `libSettingsUI.dylib` exist (run the Settings Addon install step if not)
+- You are **not** building inside a storage provider folder (iCloud, Google Drive, etc.) — storage providers add metadata that breaks the build
+
+**WARNING**: Do *not* build inside of a storage provider folder, such as Google Drive or iCloud.
 
 ```bash
 # Build with signing (for distribution)

@@ -14,131 +14,308 @@
     <div class="titlebar-content">
         <span class="titlebar-team">SFS Robotics — MATE 2026</span>
         <span class="titlebar-status">
-            <span class="status-dot ready"></span>
-            <span>Ready</span>
+            <span class="status-dot disconnected" id="ws-dot"></span>
+            <span id="ws-label">Disconnected</span>
         </span>
     </div>
 </div>
 
 <div class="dashboard">
-    
-    <div class="left-panel">
-        
-        <div class="camera-container">
-            <div class="camera-header">
-                <span class="camera-label">Primary Feed</span>
-                <select class="camera-selector" id="camera-select">
-                    <option value="main">Main Camera</option>
-                    <option value="ch1">Stereo CH01</option>
-                    <option value="ch2">Stereo CH02</option>
-                </select>
+
+    <!-- ══ LEFT: main column ══ -->
+    <div class="main-col">
+
+        <!-- Cameras (top, flex:1) -->
+        <div class="cameras-panel" id="cameras-panel">
+            <div class="cam-switcher" id="cam-switcher">
+                <div class="cam-switcher-toggle" id="cam-switcher-toggle">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 6l4-4 4 4"/><path d="M12 2v13"/><path d="M4 18h16"/></svg>
+                    Video Settings
+                </div>
+                <div class="cam-switcher-dropdown" id="cam-switcher-dropdown">
+                    <div class="cam-switcher-item csi-toggle-row">
+                        <span class="csi-name">Split View</span>
+                        <label class="csi-toggle-switch" id="split-view-toggle-label">
+                            <input type="checkbox" id="split-view-toggle" checked>
+                            <span class="csi-toggle-track"><span class="csi-toggle-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="cam-switcher-divider"></div>
+                    <div id="csi-channel-rows">
+                    <div class="cam-switcher-item"><span class="csi-name">CH01</span><div class="csi-grid-btns" data-cam="CH01"><button class="csi-gbtn" data-cam="CH01" data-pos="TL"></button><button class="csi-gbtn" data-cam="CH01" data-pos="TR"></button><button class="csi-gbtn" data-cam="CH01" data-pos="BL"></button><button class="csi-gbtn" data-cam="CH01" data-pos="BR"></button></div></div>
+                    <div class="cam-switcher-item"><span class="csi-name">CH02</span><div class="csi-grid-btns" data-cam="CH02"><button class="csi-gbtn" data-cam="CH02" data-pos="TL"></button><button class="csi-gbtn" data-cam="CH02" data-pos="TR"></button><button class="csi-gbtn" data-cam="CH02" data-pos="BL"></button><button class="csi-gbtn" data-cam="CH02" data-pos="BR"></button></div></div>
+                    <div class="cam-switcher-item"><span class="csi-name">CH03</span><div class="csi-grid-btns" data-cam="CH03"><button class="csi-gbtn" data-cam="CH03" data-pos="TL"></button><button class="csi-gbtn" data-cam="CH03" data-pos="TR"></button><button class="csi-gbtn" data-cam="CH03" data-pos="BL"></button><button class="csi-gbtn" data-cam="CH03" data-pos="BR"></button></div></div>
+                    <div class="cam-switcher-item"><span class="csi-name">CH04</span><div class="csi-grid-btns" data-cam="CH04"><button class="csi-gbtn" data-cam="CH04" data-pos="TL"></button><button class="csi-gbtn" data-cam="CH04" data-pos="TR"></button><button class="csi-gbtn" data-cam="CH04" data-pos="BL"></button><button class="csi-gbtn" data-cam="CH04" data-pos="BR"></button></div></div>
+                    </div>
+                    <div class="cam-switcher-double-divider"></div>
+                    <div class="cam-switcher-item csi-source-row" id="csi-source-row">
+                        <span class="csi-name">Source</span>
+                        <select class="csi-source-select" id="csi-source-select">
+                            <option value="">— None —</option>
+                        </select>
+                    </div>
+                    <div class="cam-switcher-item csi-toggle-row">
+                        <span class="csi-name">Undistort</span>
+                        <label class="csi-toggle-switch" id="distort-toggle-label">
+                            <input type="checkbox" id="distort-toggle">
+                            <span class="csi-toggle-track"><span class="csi-toggle-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
             </div>
-            <div class="camera-feed" id="camera-feed">
-                <div class="camera-placeholder">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <rect x="2" y="4" width="20" height="16" rx="2"/>
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M18 8h.01"/>
-                    </svg>
-                    <span>No Feed Available</span>
+            <!-- 2×2 grid: TL TR / BL BR -->
+            <div class="cam-grid" id="cam-grid">
+                <div class="cam-slot hidden-slot" id="cam-slot-TL" data-pos="TL">
+                    <div class="cam-slot-label" id="cam-label-TL">—</div>
+                    <div class="cam-feed-area" id="cam-feed-TL">
+                        <div class="cam-na" id="cam-na-TL"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M18 8h.01"/></svg><span>No Feed</span></div>
+                        <img class="cam-live-img" id="cam-img-TL" style="display:none" alt="">
+                    </div>
+                </div>
+                <div class="cam-slot hidden-slot" id="cam-slot-TR" data-pos="TR">
+                    <div class="cam-slot-label" id="cam-label-TR">—</div>
+                    <div class="cam-feed-area" id="cam-feed-TR">
+                        <div class="cam-na" id="cam-na-TR"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M18 8h.01"/></svg><span>No Feed</span></div>
+                        <img class="cam-live-img" id="cam-img-TR" style="display:none" alt="">
+                    </div>
+                </div>
+                <div class="cam-slot hidden-slot" id="cam-slot-BL" data-pos="BL">
+                    <div class="cam-slot-label" id="cam-label-BL">—</div>
+                    <div class="cam-feed-area" id="cam-feed-BL">
+                        <div class="cam-na" id="cam-na-BL"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M18 8h.01"/></svg><span>No Feed</span></div>
+                        <img class="cam-live-img" id="cam-img-BL" style="display:none" alt="">
+                    </div>
+                </div>
+                <div class="cam-slot hidden-slot" id="cam-slot-BR" data-pos="BR">
+                    <div class="cam-slot-label" id="cam-label-BR">—</div>
+                    <div class="cam-feed-area" id="cam-feed-BR">
+                        <div class="cam-na" id="cam-na-BR"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M18 8h.01"/></svg><span>No Feed</span></div>
+                        <img class="cam-live-img" id="cam-img-BR" style="display:none" alt="">
+                    </div>
                 </div>
             </div>
         </div>
+        <div class="cam-resize-handle" id="cam-resize-handle"></div>
 
-        <div class="status-grid">
-            <div class="status-card">
-                <div class="status-visual">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="2" y="7" width="18" height="10" rx="2" stroke="var(--text-muted)" fill="none" stroke-width="2"/>
-                        <rect x="4" y="9" width="11" height="6" rx="1" fill="var(--green)"/>
-                        <path d="M22 10v4" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </div>
-                <div class="status-info">
-                    <span class="status-label">Voltage</span>
-                    <span class="status-value">12.4V</span>
-                </div>
-            </div>
-            
-            <div class="status-card">
-                <div class="status-visual">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="4" y="16" width="3" height="4" rx="1" fill="var(--accent)"/>
-                        <rect x="9" y="12" width="3" height="8" rx="1" fill="var(--accent)"/>
-                        <rect x="14" y="8" width="3" height="12" rx="1" fill="var(--accent)"/>
-                        <rect x="19" y="4" width="3" height="16" rx="1" fill="var(--accent-dim)"/>
-                    </svg>
-                </div>
-                <div class="status-info">
-                    <span class="status-label">Signal</span>
-                    <span class="status-value">Strong</span>
-                </div>
-            </div>
-            
-            <div class="status-card">
-                <div class="status-visual depth-gauge">
-                    <div class="depth-fill" style="height: 60%;"></div>
-                </div>
-                <div class="status-info">
-                    <span class="status-label">Depth</span>
-                    <span class="status-value">2.3m</span>
-                </div>
-            </div>
-            
-            <div class="status-card">
-                <div class="status-visual">
-                    <svg viewBox="0 0 24 24" style="transform: rotate(45deg);">
-                        <circle cx="12" cy="12" r="10" stroke="var(--text-muted)" fill="none" stroke-width="2"/>
-                        <polygon points="12,4 15,12 12,10 9,12" fill="var(--red)"/>
-                        <polygon points="12,20 15,12 12,10 9,12" fill="var(--text-dim)"/>
-                    </svg>
-                </div>
-                <div class="status-info">
-                    <span class="status-label">Heading</span>
-                    <span class="status-value">045°</span>
-                </div>
-            </div>
-        </div>
+        <!-- Bottom area: left-col (widgets+viz) + oct-panel, with offline overlay -->
+        <div class="bottom-area">
 
-        <div class="control-box">
-            <div class="control-header">Drive System Mappings</div>
-            <div class="control-grid">
-                <div class="ctrl-row"><span class="ctrl-btn">RS Y/X</span> <span class="ctrl-desc">Drive (L/R)</span></div>
-                <div class="ctrl-row"><span class="ctrl-btn">LS Y</span> <span class="ctrl-desc">Depth (Top)</span></div>
-                <div class="ctrl-row"><span class="ctrl-btn">D-U/D</span> <span class="ctrl-desc">Pitch (Top)</span></div>
-                <div class="ctrl-row"><span class="ctrl-btn">B/X</span> <span class="ctrl-desc">Rotate Claw 1</span></div>
-                <div class="ctrl-row"><span class="ctrl-btn">A</span> <span class="ctrl-desc">Control Claw 1</span></div>
-                <div class="ctrl-row"><span class="ctrl-btn">D-L/R</span> <span class="ctrl-desc">Rotate Claw 2</span></div>
-                <div class="ctrl-row"><span class="ctrl-btn">D-D</span> <span class="ctrl-desc">Control Claw 2</span></div>
+            <!-- Offline overlay covers all of bottom-area -->
+            <div class="disconnect-overlay" id="disconnect-overlay">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <circle cx="12" cy="17" r="0.7" fill="var(--red)" stroke="none"/>
+                </svg>
+                <span class="do-title">ROV OFFLINE</span>
+                <span class="do-sub">WebSocket not connected</span>
             </div>
-        </div>
 
-    </div>
+            <!-- Left col: 2×2 widgets on top, square viz below -->
+            <div class="left-col">
 
+                <div class="widgets-panel" id="widgets-panel">
+                    <div class="widget-card" id="wc-voltage">
+                        <div class="battery-icon">
+                            <div class="bat-body"><div class="bat-fill" id="bat-fill"></div></div>
+                            <div class="bat-tip"></div>
+                        </div>
+                        
+                        <div class="widget-info">
+                            <span class="wc-label">VOLTS</span>
+                            <span class="wc-val" id="qdw-voltage-val">—</span>
+                        </div>
+                    </div>
+                    <div class="widget-card" id="wc-ping">
+                        <div class="ping-bars"><div class="ping-bar" id="pb1"></div><div class="ping-bar" id="pb2"></div><div class="ping-bar" id="pb3"></div><div class="ping-bar" id="pb4"></div></div>
+
+                        <div class="widget-info">
+                            <span class="wc-label">PING</span>
+                            <span class="wc-val" id="qdw-ping-val">—</span>
+                        </div>
+                    </div>
+                    <div class="widget-card" id="wc-depth">
+                        <div class="wc-depth-ruler" id="wc-depth-ruler"><div class="wc-depth-strip" id="wc-depth-strip"></div><div class="wc-depth-center"></div></div>
+
+                        <div class="widget-info">
+                            <span class="wc-label">DEPTH</span>
+                            <span class="wc-val" id="qdw-depth-val">—</span>
+                        </div>
+                    </div>
+                    <div class="widget-card" id="wc-heading" style="padding-left:8px;gap:10px;">
+                        <svg class="qdw-compass-icon" id="qdw-compass-svg" viewBox="0 0 18 18" width="28" height="28">
+                            <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1" fill="none" opacity="0.35"/>
+                            <circle cx="9" cy="9" r="1.2" fill="var(--text-muted)"/>
+                            <g id="compass-needle-qdw">
+                                <polygon points="9,1.5 10.1,8 9,7 7.9,8" fill="var(--red)"/>
+                                <polygon points="9,16.5 10.1,10 9,11 7.9,10" fill="var(--text-dim)"/>
+                            </g>
+                        </svg>
+
+                        <div class="widget-info">
+                            <span class="wc-label">HEADING</span>
+                            <span class="wc-val" id="qdw-heading-val">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization (square, fills remaining height) -->
+                <div class="robot-viz-panel" id="robot-viz-outer">
+                    <div class="viz-inner" id="viz-inner">
+                        <div class="depth-float depth-float-left" id="depth-float-ft">
+                            <div class="df-center-line"></div>
+                            <span class="df-current-label" id="df-ft-label">9.8ft</span>
+                            <div class="df-ruler-wrap"><div class="df-ruler-inner" id="df-ft-inner"></div></div>
+                        </div>
+                        <div class="robot-canvas-wrap" id="robot-canvas-wrap">
+                            <canvas id="robot-canvas"></canvas>
+                        </div>
+                        <div class="depth-float depth-float-right" id="depth-float-m">
+                            <div class="df-center-line"></div>
+                            <span class="df-current-label" id="df-m-label">3.0m</span>
+                            <div class="df-ruler-wrap"><div class="df-ruler-inner" id="df-m-inner"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end left-col -->
+
+            <!-- OCT panel: full right side height -->
+            <div class="oct-panel">
+                <div class="oct-switcher">
+                    <button class="oct-btn active" data-oct="opmode">OpMode &amp; Telemetry</button>
+                    <button class="oct-btn" data-oct="control">Control</button>
+                </div>
+
+                <div class="oct-body">
+                <div class="oct-content active" id="oct-opmode">
+                    <div class="oct-opmode-telem-split">
+                        <div class="opmode-body">
+                            <div class="opmode-select-row">
+                                <label class="opmode-label">OpMode</label>
+                                <select class="opmode-select" id="opmode-select">
+                                    <option value="">Select...</option>
+                                    <option value="WaterDrive">WaterDrive</option>
+                                    <option value="AutoSample">AutoSample</option>
+                                    <option value="ManualControl">ManualControl</option>
+                                </select>
+                            </div>
+                            <div class="opmode-circle-area">
+                                <button class="opmode-init-btn" id="opmode-init"><span>INIT</span></button>
+                                <button class="opmode-main-circle" id="opmode-start" disabled data-state="start">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                                    <span>START</span>
+                                </button>
+                                <button class="opmode-stop-btn" id="opmode-stop" disabled>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    <span>STOP</span>
+                                </button>
+                            </div>
+                            <div class="opmode-timer-row">
+                                <span class="opmode-timer-val" id="opmode-timer-val">—</span>
+                            </div>
+                        </div>
+                        <div class="oct-opmode-telem-divider"></div>
+                        <div class="oct-telem-half">
+                            <div class="telemetry-body" id="telemetry-body"><div class="telem-empty">No telemetry data</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="oct-content" id="oct-control">
+                    <div class="ctrl-display">
+                        <div class="ctrl-tabs">
+                            <button class="ctrl-tab active" data-ctab="controller">Controller</button>
+                            <button class="ctrl-tab" data-ctab="keyboard">Keyboard</button>
+                            <label class="ctrl-multi-label" id="ctrl-multi-label">
+                                <input type="checkbox" id="ctrl-multi-check">
+                                <span>Multi-Input Mode</span>
+                            </label>
+                        </div>
+
+                        <div class="ctrl-body">
+                        <!-- Controller: F310 spatial layout matching physical controller -->
+                        <div class="ctrl-tab-content active" id="ctab-controller">
+                            <div class="ctrl-f310">
+                                <div class="f310-cell f310-ga-lb"><div class="ctrl-key-btn f310-btn" data-action="rotate_claw1_ccw" data-key="LB">LB</div><span>Claw 1 ↺</span></div>
+                                <div class="f310-cell f310-ga-rb"><div class="ctrl-key-btn f310-btn" data-action="rotate_claw1_cw"  data-key="RB">RB</div><span>Claw 1 ↻</span></div>
+                                <div class="f310-cell f310-ga-lt"><div class="ctrl-key-btn f310-btn f310-trigger" data-action="rotate_claw2_ccw" data-key="LT">LT</div><span>Claw 2 ↺</span></div>
+                                <div class="f310-cell f310-ga-rt"><div class="ctrl-key-btn f310-btn f310-trigger" data-action="rotate_claw2_cw"  data-key="RT">RT</div><span>Claw 2 ↻</span></div>
+                                <div class="f310-cell f310-ga-bk f310-disabled"><div class="ctrl-key-btn f310-btn f310-center-btn" disabled>BACK</div><span>&nbsp;</span></div>
+                                <div class="f310-cell f310-ga-st f310-disabled"><div class="ctrl-key-btn f310-btn f310-center-btn" disabled>START</div><span>&nbsp;</span></div>
+                                <div class="f310-cell f310-ga-du"><div class="ctrl-key-btn f310-btn f310-dpad-btn" data-action="drive_fwd"   data-key="DPAD_UP">↑</div><span>Fwd</span></div>
+                                <div class="f310-cell f310-ga-dl"><div class="ctrl-key-btn f310-btn f310-dpad-btn" data-action="drive_left"  data-key="DPAD_LEFT">←</div><span>Left</span></div>
+                                <div class="f310-cell f310-ga-dr"><div class="ctrl-key-btn f310-btn f310-dpad-btn" data-action="drive_right" data-key="DPAD_RIGHT">→</div><span>Right</span></div>
+                                <div class="f310-cell f310-ga-dd"><div class="ctrl-key-btn f310-btn f310-dpad-btn" data-action="drive_back"  data-key="DPAD_DOWN">↓</div><span>Back</span></div>
+                                <div class="f310-cell f310-ga-lu"><div class="ctrl-key-btn f310-btn f310-stick-btn" data-action="ascend"      data-key="LS_UP">↑</div><span>Ascend</span></div>
+                                <div class="f310-cell f310-ga-ll"><div class="ctrl-key-btn f310-btn f310-stick-btn" data-action="pitch_left"  data-key="LS_LEFT">←</div><span>Pitch L</span></div>
+                                <div class="f310-cell f310-ga-lr"><div class="ctrl-key-btn f310-btn f310-stick-btn" data-action="pitch_right" data-key="LS_RIGHT">→</div><span>Pitch R</span></div>
+                                <div class="f310-cell f310-ga-ld"><div class="ctrl-key-btn f310-btn f310-stick-btn" data-action="descend"     data-key="LS_DOWN">↓</div><span>Descend</span></div>
+                                <div class="f310-cell f310-ga-fx"><div class="ctrl-key-btn f310-btn f310-face-btn face-x" data-action="claw2_open"  data-key="X">X</div><span>C2 Open</span></div>
+                                <div class="f310-cell f310-ga-fb"><div class="ctrl-key-btn f310-btn f310-face-btn face-b" data-action="claw1_close" data-key="B">B</div><span>C1 Close</span></div>
+                                <div class="f310-cell f310-ga-fa"><div class="ctrl-key-btn f310-btn f310-face-btn face-a" data-action="claw2_close" data-key="A">A</div><span>C2 Close</span></div>
+                                <div class="f310-cell f310-ga-fy"><div class="ctrl-key-btn f310-btn f310-face-btn face-y" data-action="claw1_open"  data-key="Y">Y</div><span>C1 Open</span></div>
+                                <div class="f310-cell f310-ga-ru f310-disabled"><div class="ctrl-key-btn f310-btn f310-stick-btn" data-key="RS_UP"    disabled>↑</div><span>&nbsp;</span></div>
+                                <div class="f310-cell f310-ga-rl f310-disabled"><div class="ctrl-key-btn f310-btn f310-stick-btn" data-key="RS_LEFT"  disabled>←</div><span>&nbsp;</span></div>
+                                <div class="f310-cell f310-ga-rr f310-disabled"><div class="ctrl-key-btn f310-btn f310-stick-btn" data-key="RS_RIGHT" disabled>→</div><span>&nbsp;</span></div>
+                                <div class="f310-cell f310-ga-rd f310-disabled"><div class="ctrl-key-btn f310-btn f310-stick-btn" data-key="RS_DOWN"  disabled>↓</div><span>&nbsp;</span></div>
+                            </div>
+                        </div>
+                        <!-- Keyboard: grid layout matching key positions -->
+                        <div class="ctrl-tab-content" id="ctab-keyboard">
+                            <div class="ctrl-kb">
+                                <!-- WASD group highlight (SVG T-shape outline) -->
+                                <svg class="kb-group-svg" aria-hidden="true"><path class="kb-group-path" /></svg>
+                                <!-- Row 1 -->
+                                <div class="f310-cell kb-ga-q" ><div class="ctrl-key-btn f310-btn" data-action="rotate_claw1_ccw" data-key="Q">Q</div><span>C1 ↺</span></div>
+                                <div class="f310-cell kb-ga-w" ><div class="ctrl-key-btn f310-btn" data-action="drive_fwd"        data-key="W">W</div><span>Fwd</span></div>
+                                <div class="f310-cell kb-ga-e" ><div class="ctrl-key-btn f310-btn" data-action="rotate_claw1_cw"  data-key="E">E</div><span>C1 ↻</span></div>
+                                <div class="f310-cell kb-ga-r" ><div class="ctrl-key-btn f310-btn" data-action="claw1_open"  data-key="R">R</div><span>C1 Open</span></div>
+                                <div class="f310-cell kb-ga-t" ><div class="ctrl-key-btn f310-btn" data-action="claw2_open"  data-key="T">T</div><span>C2 Open</span></div>
+                                <!-- Row 2 -->
+                                <div class="f310-cell kb-ga-a" ><div class="ctrl-key-btn f310-btn" data-action="drive_left"       data-key="A">A</div><span>Left</span></div>
+                                <div class="f310-cell kb-ga-s" ><div class="ctrl-key-btn f310-btn" data-action="drive_back"       data-key="S">S</div><span>Back</span></div>
+                                <div class="f310-cell kb-ga-d" ><div class="ctrl-key-btn f310-btn" data-action="drive_right"      data-key="D">D</div><span>Right</span></div>
+                                <div class="f310-cell kb-ga-f" ><div class="ctrl-key-btn f310-btn" data-action="claw1_close" data-key="F">F</div><span>C1 Close</span></div>
+                                <div class="f310-cell kb-ga-g" ><div class="ctrl-key-btn f310-btn" data-action="claw2_close" data-key="G">G</div><span>C2 Close</span></div>
+                                <!-- Row 3 -->
+                                <div class="f310-cell kb-ga-z" ><div class="ctrl-key-btn f310-btn" data-action="rotate_claw2_ccw" data-key="Z">Z</div><span>C2 ↺</span></div>
+                                <div class="f310-cell kb-ga-c" ><div class="ctrl-key-btn f310-btn" data-action="rotate_claw2_cw"  data-key="C">C</div><span>C2 ↻</span></div>
+                                <div class="f310-cell kb-ga-pu f310-disabled"><div class="ctrl-key-btn f310-btn f310-dpad-btn" disabled>↑</div><span>&nbsp;</span></div>
+                                <!-- Row 4 -->
+                                <div class="f310-cell kb-ga-sh"><div class="ctrl-key-btn f310-btn" data-action="descend"          data-key="Shift">Shift</div><span>Descend</span></div>
+                                <div class="f310-cell kb-ga-sp"><div class="ctrl-key-btn f310-btn" data-action="ascend"           data-key=" ">Space</div><span>Ascend</span></div>
+                                <div class="f310-cell kb-ga-pl"><div class="ctrl-key-btn f310-btn f310-dpad-btn" data-action="pitch_left"  data-key="ArrowLeft">←</div><span>Pitch ←</span></div>
+                                <div class="f310-cell kb-ga-pd f310-disabled"><div class="ctrl-key-btn f310-btn f310-dpad-btn" disabled>↓</div><span>&nbsp;</span></div>
+                                <div class="f310-cell kb-ga-pr"><div class="ctrl-key-btn f310-btn f310-dpad-btn" data-action="pitch_right" data-key="ArrowRight">→</div><span>Pitch →</span></div>
+                            </div>
+                        </div>
+                        </div><!-- end ctrl-body -->
+
+                        <div class="oct-footer">
+                            <span class="oct-opmode-badge" id="ctrl-opmode-badge">—</span>
+                            <span class="oct-time-badge" id="ctrl-time-badge">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                </div><!-- end oct-body -->
+            </div><!-- end oct-panel -->
+        </div><!-- end bottom-area -->
+    </div><!-- end main-col -->
+
+    <!-- ══ RIGHT: task panel ══ -->
     <div class="right-panel">
-        
         <div class="task-selector">
-            <button class="task-btn active" data-task="1_2">
-                <span class="task-num">1.2</span>
-                <span class="task-name">Coral Ridge Model</span>
-            </button>
-            <button class="task-btn" data-task="2_1">
-                <span class="task-num">2.1</span>
-                <span class="task-name">Crab Detection</span>
-            </button>
-            <button class="task-btn" data-task="2_2">
-                <span class="task-num">2.2</span>
-                <span class="task-name">Iceberg Threat Level</span>
-            </button>
+            <button class="task-btn" data-task="1_2"><span class="task-num">1.2</span><span class="task-name">Coral Ridge</span></button>
+            <button class="task-btn" data-task="2_1"><span class="task-num">2.1</span><span class="task-name">Crab Detection</span></button>
+            <button class="task-btn" data-task="2_2"><span class="task-num">2.2</span><span class="task-name">Iceberg Threat</span></button>
+            <button class="task-btn" data-task="2_5"><span class="task-num">2.5</span><span class="task-name">eDNA Frequency</span></button>
         </div>
-
-        <div class="task-content" id="task-content">
-            <iframe id="task-frame" src="/t/1_2" frameborder="0" scrolling="yes"></iframe>
-        </div>
-
+        <div class="task-content" id="task-content"></div>
     </div>
 
-</div>
+</div><!-- end dashboard -->
 
 <script src="../static/js/main.js"></script>
 </body>

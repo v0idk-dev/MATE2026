@@ -2,8 +2,6 @@ const leftInput = document.getElementById('left-image');
 const rightInput = document.getElementById('right-image');
 const leftPreview = document.getElementById('left-preview');
 const rightPreview = document.getElementById('right-preview');
-const pipeInput = document.getElementById('pipe-image');
-const pipePreview = document.getElementById('pipe-preview');
 const analyzeBtn = document.getElementById('analyze-btn');
 
 function setupUpload(input, preview, cardId) {
@@ -27,7 +25,6 @@ function setupUpload(input, preview, cardId) {
 
 setupUpload(leftInput, leftPreview, 'left-upload');
 setupUpload(rightInput, rightPreview, 'right-upload');
-setupUpload(pipeInput, pipePreview, 'pipe-upload');
 
 function checkReady() {
     const hasLeft = leftInput.files && leftInput.files.length > 0;
@@ -106,6 +103,31 @@ function showError(msg) {
     document.getElementById('error-message').textContent = msg;
 }
 
+let _annotatedDataUrl = null;
+let _annotatedFilename = 'annotated.png';
+
+function downloadAnnotated() {
+    if (!_annotatedDataUrl) return;
+    const a = document.createElement('a');
+    a.href = _annotatedDataUrl;
+    a.download = _annotatedFilename;
+    a.click();
+}
+
+function setAnnotatedResult(dataUrl, filename) {
+    _annotatedDataUrl = dataUrl;
+    _annotatedFilename = filename;
+    const btn = document.getElementById('annotated-dl-btn');
+    const hint = document.getElementById('annotated-dl-hint');
+    if (dataUrl) {
+        btn.style.display = '';
+        hint.textContent = filename;
+    } else {
+        btn.style.display = 'none';
+        hint.textContent = '';
+    }
+}
+
 function showPlateResults(data) {
     document.getElementById('results-section').style.display = 'block';
     document.getElementById('plate-results').style.display = 'block';
@@ -114,11 +136,14 @@ function showPlateResults(data) {
 
     const annotatedContainer = document.getElementById('annotated-image-container');
     annotatedContainer.innerHTML = '';
-    const annotatedUrl = data.debug_images?.find(u => u.includes('annotated'));
+    const annotatedEntry = data.debug_images && Object.entries(data.debug_images).find(([k]) => k.includes('annotated'));
+    const annotatedUrl = annotatedEntry ? annotatedEntry[1] : null;
     if (annotatedUrl) {
         annotatedContainer.innerHTML = `<img src="${annotatedUrl}" alt="Annotated results" class="annotated-img">`;
+        setAnnotatedResult(annotatedUrl, annotatedEntry[0]);
     } else {
         annotatedContainer.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No annotated image available</p>';
+        setAnnotatedResult(null, '');
     }
 
     const plateList = document.getElementById('plate-distances-list');
@@ -167,11 +192,14 @@ function showPipeResults(data) {
 
     const annotatedContainer = document.getElementById('annotated-image-container');
     annotatedContainer.innerHTML = '';
-    const annotatedUrl = data.debug_images?.find(u => u.includes('annotated'));
+    const annotatedEntry = data.debug_images && Object.entries(data.debug_images).find(([k]) => k.includes('annotated'));
+    const annotatedUrl = annotatedEntry ? annotatedEntry[1] : null;
     if (annotatedUrl) {
         annotatedContainer.innerHTML = `<img src="${annotatedUrl}" alt="Pipe measurement results" class="annotated-img">`;
+        setAnnotatedResult(annotatedUrl, annotatedEntry[0]);
     } else {
         annotatedContainer.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No annotated image available</p>';
+        setAnnotatedResult(null, '');
     }
 
     const pipeList = document.getElementById('pipe-lengths-list');
@@ -213,6 +241,32 @@ function showPipeResults(data) {
     document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function makeDownloadBtn(dataUrl, filename) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cd-download-bar';
+    wrap.style.marginTop = '10px';
+
+    const btn = document.createElement('button');
+    btn.className = 'cd-download-btn';
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg> Download`;
+    btn.onclick = () => {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename;
+        a.click();
+    };
+
+    const hint = document.createElement('span');
+    hint.className = 'cd-download-hint';
+    hint.textContent = filename;
+
+    if (filename === 'pair_1_left_detection.png') wrap.style.marginBottom = '14px';
+
+    wrap.appendChild(btn);
+    wrap.appendChild(hint);
+    return wrap;
+}
+
 function setupDebugTabs(data, mode) {
     const uploadedPanel = document.getElementById('panel-uploaded');
     const detectionsPanel = document.getElementById('panel-detections');
@@ -235,18 +289,103 @@ function setupDebugTabs(data, mode) {
     }
 
     if (data.debug_images) {
-        data.debug_images.forEach(url => {
-            if (url.includes('detection') || url.includes('references')) {
-                detectionsPanel.innerHTML += `<img src="${url}" alt="Detection visualization">`;
-            } else if (url.includes('matches') || url.includes('edges')) {
-                matchesPanel.innerHTML += `<img src="${url}" alt="Feature analysis">`;
-            } else if (url.includes('epipolar')) {
-                epipolarPanel.innerHTML += `<img src="${url}" alt="Epipolar lines">`;
+        Object.entries(data.debug_images).forEach(([fname, url]) => {
+            const img = `<img src="${url}" alt="${fname}">`;
+            const btn = makeDownloadBtn(url, fname);
+            if (fname.includes('detection') || fname.includes('references')) {
+                detectionsPanel.insertAdjacentHTML('beforeend', img);
+                detectionsPanel.appendChild(btn);
+            } else if (fname.includes('matches') || fname.includes('edges')) {
+                matchesPanel.insertAdjacentHTML('beforeend', img);
+                matchesPanel.appendChild(btn);
+            } else if (fname.includes('epipolar')) {
+                epipolarPanel.insertAdjacentHTML('beforeend', img);
+                epipolarPanel.appendChild(btn);
             }
         });
     }
 
-    if (!detectionsPanel.innerHTML) detectionsPanel.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No detection images</p>';
-    if (!matchesPanel.innerHTML) matchesPanel.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No match/edge images</p>';
-    if (!epipolarPanel.innerHTML) epipolarPanel.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No epipolar images</p>';
+    if (!detectionsPanel.querySelector('img')) detectionsPanel.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No detection images</p>';
+    if (!matchesPanel.querySelector('img')) matchesPanel.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No match/edge images</p>';
+    if (!epipolarPanel.querySelector('img')) epipolarPanel.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No epipolar images</p>';
+}
+
+// ── Screenshot from camera ────────────────────────────────────────────────────
+async function screenshotChannel(channel) {
+    const res = await fetch(`/api/camera/screenshot/${channel}`);
+    if (!res.ok) throw new Error(`No frame on ${channel}`);
+    const blob = await res.blob();
+    return new File([blob], `screenshot_${channel}.jpg`, { type: 'image/jpeg' });
+}
+
+function loadImageFile(file, inputEl, previewEl, cardId) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    inputEl.files = dt.files;
+    const reader = new FileReader();
+    reader.onload = e => {
+        previewEl.src = e.target.result;
+        document.getElementById(cardId).classList.add('has-image');
+        checkReady();
+    };
+    reader.readAsDataURL(file);
+}
+
+async function takeScreenshots() {
+    let leftCh = 'CH03', rightCh = 'CH04';
+    try {
+        const r = await fetch('/api/cameras_config');
+        if (r.ok) {
+            const cfg = await r.json();
+            leftCh  = cfg.screenshots?.photogrammetryLeft?.channel  || leftCh;
+            rightCh = cfg.screenshots?.photogrammetryRight?.channel || rightCh;
+        }
+    } catch (_) {}
+    try {
+        const [lFile, rFile] = await Promise.all([
+            screenshotChannel(leftCh),
+            screenshotChannel(rightCh),
+        ]);
+        loadImageFile(lFile, leftInput,  leftPreview,  'left-upload');
+        loadImageFile(rFile, rightInput, rightPreview, 'right-upload');
+    } catch (e) {
+        alert('Screenshot failed: ' + e.message);
+    }
+}
+
+// ── Photo defaults from settings ──────────────────────────────────────────────
+async function loadPhotoDefaults() {
+    try {
+        const r = await fetch('/api/settings/photo');
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d.focal)    document.getElementById('focal-length').value  = d.focal;
+        if (d.sensorW)  document.getElementById('sensor-width').value  = d.sensorW;
+        if (d.baseline) document.getElementById('baseline').value      = d.baseline;
+        if (d.plateW)   document.getElementById('plate-width').value   = d.plateW;
+        if (d.plateH)   document.getElementById('plate-height').value  = d.plateH;
+    } catch {}
+}
+
+function savePhotoDefaults() {
+    const data = {
+        focal:    document.getElementById('focal-length').value,
+        sensorW:  document.getElementById('sensor-width').value,
+        baseline: document.getElementById('baseline').value,
+        plateW:   document.getElementById('plate-width').value,
+        plateH:   document.getElementById('plate-height').value,
+    };
+    fetch('/api/settings/photo', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) })
+        .catch(() => {});
+}
+
+['focal-length', 'sensor-width', 'baseline', 'plate-width', 'plate-height'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', savePhotoDefaults);
+});
+
+loadPhotoDefaults();
+
+if (window.electronAPI?.onSettingsPhotoChanged) {
+    window.electronAPI.onSettingsPhotoChanged(() => loadPhotoDefaults());
 }

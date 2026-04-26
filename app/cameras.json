@@ -1,0 +1,19 @@
+{
+  "_comment": "Camera channel assignments. Channel numbers correspond to quadrants of the split view (CH01=TL, CH02=TR, CH03=BL, CH04=BR). Edit these to change which physical camera feeds which slot.",
+  
+  "defaultView": {
+    "TL": "CH02",
+    "TR": "CH04",
+    "BL": null,
+    "BR": null
+  },
+
+  "screenshots": {
+    "crabDetection": {
+      "_comment": "Channel used when split view is ON. When split view is OFF, the full frame is used instead.",
+      "splitChannel": "CH01"
+    },
+    "photogrammetryLeft":  { "channel": "CH03" },
+    "photogrammetryRight": { "channel": "CH04" }
+  }
+}
