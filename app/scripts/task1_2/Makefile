@@ -9,12 +9,20 @@ TARGET = stereo_distance
 SOURCES = $(wildcard $(SRCDIR)/*.cpp)
 OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
 
-.PHONY: all clean run help
+##############################
+# OPENCV FIX - DO NOT REMOVE #
+##############################
 
-# After linking, rewrite the Homebrew paths baked in by `pkg-config --libs`
-# so the binary resolves to the bundled OpenCV libs on other machines.
+.PHONY: all dist clean run help
+
 all: $(TARGET)
+
+dist: $(TARGET)
 	@bash ../../fix-opencv.sh
+
+##############################
+#       END OPENCV FIX       #
+##############################
 
 $(TARGET): $(OBJECTS)
 	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)

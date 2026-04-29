@@ -146,8 +146,8 @@ body.dashboard-root { overflow: hidden; }
 /* Disconnect overlay — covers entire bottom-area */
 .disconnect-overlay {
   position: absolute; inset: 0; z-index: 50;
-  background: rgba(10,14,26,0.92);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  background: rgba(10,14,26,0.32);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   border-radius: var(--radius); border: 1px solid rgba(239,68,68,0.15);
   pointer-events: all;
@@ -188,7 +188,7 @@ body.dashboard-root { overflow: hidden; }
   gap: 2px; /* Small space between Title and Value */
 }
 
-.widget-card.disconnected-dim { opacity: 0.35; }
+.widget-card.disconnected-dim { opacity: 1; }
 .wc-label { font-family: 'Space Mono', monospace; font-size: 0.52rem; font-weight: 700; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; }
 .wc-val { font-family: 'Space Mono', monospace; font-size: 1.05rem; font-weight: 700; color: var(--text); line-height: 1; -webkit-user-select: text; user-select: text; }
 

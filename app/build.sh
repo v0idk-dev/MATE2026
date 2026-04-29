@@ -33,7 +33,7 @@ fi
 # Always run cleanup and build C++
 printf "\n\e[97;4;1mBuilding C++ binaries\e[0m\n\n"
 make -C scripts/task1_2 clean
-make -C scripts/task1_2 all
+make -C scripts/task1_2 dist
 
 printf "\n\e[97;4;1mBuilding native settings addon\e[0m\n\n"
 (bash native/settings/build.sh)

@@ -96,7 +96,6 @@ tasks.json
 
 If Homebrew isn't installed, please install that first at [brew.sh](https://brew.sh).
 
-
 ### Python
 
 ```bash
@@ -124,7 +123,11 @@ cp -L /opt/homebrew/opt/opencv/lib/*.dylib app/Resources/opencv-libs/
 Add to `/scripts/task1_2/Makefile`:
 
 ```makefile
+.PHONY: all dist clean run help
+
 all: $(TARGET)
+
+dist: $(TARGET)
 	@bash ../../fix-opencv.sh
 ```
 
