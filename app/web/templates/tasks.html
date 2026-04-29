@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Tracker</title>
+    <style>
+        @font-face {
+            font-family: 'Space Mono';
+            font-weight: 400;
+            src: url('/static/fonts/SpaceMono-Regular.ttf') format('truetype');
+        }
+        @font-face {
+            font-family: 'Space Mono';
+            font-weight: 700;
+            src: url('/static/fonts/SpaceMono-Bold.ttf') format('truetype');
+        }
+        :root {
+            --bg:         #0a0e1a;
+            --surface:    #111827;
+            --surface2:   #1a2235;
+            --border:     #1e2d45;
+            --accent:     #00bfff;
+            --accent-dim: rgba(0,191,255,0.12);
+            --text:       #e2e8f0;
+            --text-dim:   #64748b;
+            --text-muted: #3d5170;
+            --yellow:     #f59e0b;
+            --green:      #22c55e;
+            --red:        #ef4444;
+            --yellow-bg:  rgba(245,158,11,0.12);
+            --green-bg:   rgba(34,197,94,0.12);
+            --radius:     12px;
+            --radius-sm:  8px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Space Mono', monospace; -webkit-user-select: none; user-select: none; overflow: hidden; }
+        .root { display: flex; flex-direction: column; height: 100%; }
+
+        /* ── Titlebar ── */
+        .titlebar { height: 28px; -webkit-app-region: drag; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; flex-shrink: 0; }
+        .titlebar-title { font-family: 'Space Mono', monospace; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-left: 66px; }
+
+        .content { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+        /* ── No file ── */
+        #no-file { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 10px; padding: 24px; }
+        #no-file svg { color: var(--text-muted); opacity: 0.4; }
+        #no-file p { font-size: 0.78rem; color: var(--text-dim); text-align: center; line-height: 1.5; }
+        #no-file .hint { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--text-muted); }
+
+        /* ── Task view ── */
+        #task-view { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+
+        /* ── Section header bar ── */
+        /* Background is the timer color for demo sections; plain surface otherwise */
+        #section-bar {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.4s ease;
+            background: var(--surface);
+            overflow: hidden;
+        }
+        .section-label-area {
+            flex: 1;
+            padding: 6px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        .section-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .section-progress-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .section-progress-bg {
+            flex: 1;
+            height: 2px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .section-progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        .section-progress-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.55rem;
+            color: rgba(255,255,255,0.35);
+            white-space: nowrap;
+        }
+
+        /* Timer block — only visible in demo section */
+        #timer-block {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 14px 6px 8px;
+            cursor: pointer;
+            -webkit-app-region: no-drag;
+            gap: 1px;
+            flex-shrink: 0;
+        }
+        #timer-block:hover { opacity: 0.85; }
+        .timer-digits {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+            color: rgba(255,255,255,0.9);
+            letter-spacing: -0.02em;
+        }
+        .timer-hint {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.48rem;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* Demo section color states applied to #section-bar */
+        #section-bar.demo-idle    { background: rgba(0,191,255,0.15); border-bottom-color: rgba(0,191,255,0.2); }
+        #section-bar.demo-idle    .section-name { color: var(--accent); }
+        #section-bar.demo-idle    .section-progress-fill { background: var(--accent); }
+
+        #section-bar.demo-green   { background: rgba(34,197,94,0.18); border-bottom-color: rgba(34,197,94,0.25); }
+        #section-bar.demo-green   .section-name { color: var(--green); }
+        #section-bar.demo-green   .section-progress-fill { background: var(--green); }
+
+        #section-bar.demo-yellow  { background: rgba(245,158,11,0.2); border-bottom-color: rgba(245,158,11,0.28); }
+        #section-bar.demo-yellow  .section-name { color: var(--yellow); }
+        #section-bar.demo-yellow  .section-progress-fill { background: var(--yellow); }
+
+        #section-bar.demo-red     { background: rgba(239,68,68,0.22); border-bottom-color: rgba(239,68,68,0.3); }
+        #section-bar.demo-red     .section-name { color: var(--red); }
+        #section-bar.demo-red     .section-progress-fill { background: var(--red); }
+
+        /* ── Skip banner — zero-height when hidden ── */
+        #skip-banner {
+            flex-shrink: 0;
+            overflow: hidden;
+            height: 0;
+            background: var(--yellow-bg);
+            border-bottom: 0px solid rgba(245,158,11,0.25);
+            transition: height 0.15s ease;
+        }
+        #skip-banner.visible { height: 34px; border-bottom-width: 1px; }
+        #skip-banner.visible.expanded { height: auto; max-height: 170px; }
+        .skip-inner { padding: 0 14px; }
+        .skip-banner-header { display: flex; align-items: center; gap: 8px; height: 34px; cursor: pointer; }
+        .skip-badge { background: var(--yellow); border-radius: 4px; padding: 1px 7px; font-family: 'Space Mono', monospace; font-size: 0.6rem; font-weight: 700; color: #0a0e1a; flex-shrink: 0; }
+        .skip-banner-label { font-size: 0.72rem; color: var(--yellow); font-weight: 600; flex: 1; }
+        .skip-caret { font-size: 0.65rem; color: var(--yellow); transition: transform 0.15s; }
+        #skip-banner.expanded .skip-caret { transform: rotate(180deg); }
+        .skip-list { overflow-y: auto; max-height: 128px; padding-bottom: 6px; }
+        .skip-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid rgba(245,158,11,0.15); cursor: pointer; }
+        .skip-item-id { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--yellow); font-weight: 700; min-width: 32px; }
+        .skip-item-name { font-size: 0.72rem; color: var(--text-dim); flex: 1; }
+        .skip-item-jump { font-size: 0.65rem; color: var(--accent); opacity: 0; transition: opacity 0.12s; }
+        .skip-item:hover .skip-item-jump { opacity: 1; }
+
+        /* ── Task area ── */
+        .task-area { flex: 1; overflow: hidden; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+
+        .task-header { display: flex; align-items: flex-start; gap: 10px; }
+        .task-id-badge { font-family: 'Space Mono', monospace; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(0,191,255,0.2); border-radius: 6px; padding: 3px 8px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+        .task-meta { flex: 1; min-width: 0; }
+        .task-name { font-size: 0.95rem; font-weight: 600; color: var(--text); line-height: 1.25; margin-bottom: 2px; }
+        .task-points { font-family: 'Space Mono', monospace; font-size: 0.62rem; color: var(--text-dim); }
+        .task-points span { color: var(--green); font-weight: 700; }
+        .task-num { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0; align-self: center; letter-spacing: -0.02em; }
+        .task-status { display: none; align-items: center; gap: 6px; font-size: 0.7rem; font-weight: 600; }
+        .task-status.completed { color: var(--green); }
+        .task-status.skipped { color: var(--yellow); }
+        .task-desc { font-size: 0.75rem; color: var(--text-dim); line-height: 1.6; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; -webkit-user-select: text; user-select: text; flex: 1; overflow-y: auto; min-height: 0; }
+        .task-desc::-webkit-scrollbar { width: 4px; }
+        .task-desc::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        /* ── Controls ── */
+        .controls { padding: 10px 14px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+        .btn-row { display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-family: 'Space Mono', monospace; font-size: 0.72rem; font-weight: 400; cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; background: var(--surface); color: var(--text-dim); display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+        .btn:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+        .btn:disabled { opacity: 0.28; cursor: not-allowed; }
+        .btn-primary { background: var(--accent-dim); border-color: rgba(0,191,255,0.3); color: var(--accent); }
+        .btn-primary:hover:not(:disabled) { background: rgba(0,191,255,0.2); border-color: var(--accent); }
+        .btn-success { background: var(--green-bg); border-color: rgba(34,197,94,0.3); color: var(--green); }
+        .btn-success:hover:not(:disabled) { background: rgba(34,197,94,0.2); border-color: var(--green); }
+        .btn-warn { background: var(--yellow-bg); border-color: rgba(245,158,11,0.3); color: var(--yellow); }
+        .btn-warn:hover:not(:disabled) { background: rgba(245,158,11,0.2); border-color: var(--yellow); }
+
+        #section-jump-wrap { display: none; flex-direction: row; gap: 8px; }
+        .btn-sec-jump { flex: 1; padding: 7px 12px; border-radius: var(--radius-sm); border: 1px dashed var(--border); background: transparent; color: var(--text-muted); font-family: 'Space Mono', monospace; font-size: 0.66rem; cursor: pointer; transition: all 0.12s; display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+        .btn-sec-jump:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+        /* Loading */
+        #loading { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 10px; }
+        .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div class="root">
+    <div class="titlebar">
+        <span class="titlebar-title">Task Tracker</span>
+    </div>
+    <div class="content">
+        <div id="loading"><div class="spinner"></div></div>
+
+        <div id="no-file">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+            <p>No task file loaded.<br>Upload a <strong>.m26tl</strong> file in Settings → Tasks.</p>
+        </div>
+
+        <div id="task-view">
+            <!-- Section header with per-section progress and demo timer -->
+            <div id="section-bar">
+                <div class="section-label-area">
+                    <span class="section-name" id="section-name">—</span>
+                    <div class="section-progress-row">
+                        <div class="section-progress-bg">
+                            <div class="section-progress-fill" id="section-progress-fill"></div>
+                        </div>
+                        <span class="section-progress-label" id="section-progress-label">0/0</span>
+                    </div>
+                </div>
+                <!-- Timer: only visible in demo section, counts down from 15:00 -->
+                <div id="timer-block" title="Click: start/pause · Option+Click: reset">
+                    <span class="timer-digits" id="timer-digits">15:00</span>
+                    <span class="timer-hint" id="timer-hint">tap to start</span>
+                </div>
+            </div>
+
+            <!-- Skip banner: zero-height when section has no skips -->
+            <div id="skip-banner">
+                <div class="skip-inner">
+                    <div class="skip-banner-header" onclick="toggleSkipBanner()">
+                        <span class="skip-badge" id="skip-count">0</span>
+                        <span class="skip-banner-label">Skipped in this section — tap to review</span>
+                        <span class="skip-caret">▼</span>
+                    </div>
+                    <div class="skip-list" id="skip-list"></div>
+                </div>
+            </div>
+
+            <div class="task-area">
+                <div class="task-header">
+                    <span class="task-id-badge" id="task-id"></span>
+                    <div class="task-meta">
+                        <div class="task-name" id="task-name"></div>
+                        <div class="task-points">Max: <span id="task-points"></span></div>
+                    </div>
+                    <span class="task-num" id="task-num"></span>
+                </div>
+                <div id="task-status" class="task-status"></div>
+                <div class="task-desc" id="task-desc"></div>
+            </div>
+
+            <div class="controls">
+                <div class="btn-row">
+                    <button class="btn" id="btn-back" onclick="goBack()">← Back</button>
+                    <button class="btn btn-success" id="btn-complete" onclick="toggleComplete()">Complete ✓</button>
+                    <button class="btn btn-warn" id="btn-right" onclick="rightAction()">Skip →</button>
+                </div>
+                <div id="section-jump-wrap">
+                    <button class="btn-sec-jump" id="btn-section-back" onclick="jumpToPrevSection()">← Prev Section</button>
+                    <button class="btn-sec-jump" id="btn-section-fwd"  onclick="jumpToNextSection()">Next Section →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const TIMER_START = 15 * 60;
+const _ipc = window.electronAPI || null;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+// sections: [{label, ids[], type}]  type: 'pre-competition'|'pre-demonstration'|'demo'
+// Each section has its own ids array; idx is per-section.
+// Global cursor: which section + which task within it.
+let taskMap  = {};   // id → task object
+let sections = [];   // [{label, ids, type}]
+let secIdx   = 0;    // current section index
+let taskIdx  = 0;    // current task index within current section
+let states   = {};   // id → 'pending'|'complete'|'skipped'  (global, never reset)
+let fileId   = null;
+
+// Timer (per demo session, persists across section changes in same run)
+let timerSecs    = TIMER_START;
+let timerRunning = false;
+let timerHandle  = null;
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function init() {
+    show('loading');
+    try {
+        const res = await fetch('/api/tasks/active');
+        if (!res.ok) { show('no-file'); return; }
+        const data = await res.json();
+
+        const dOrder    = data.dOrder    || [];
+        const pOrder    = data.pOrder    || [];
+        const demoOrder = data.demoOrder || [];
+
+        if (!dOrder.length && !pOrder.length && !demoOrder.length) {
+            show('no-file'); return;
+        }
+
+        // Build task lookup
+        taskMap = {};
+        (data.allTasks || []).forEach(t => taskMap[t.id] = t);
+
+        // Build sections
+        sections = [];
+        if (dOrder.length)    sections.push({ label: 'Pre-Competition',    ids: dOrder,    type: 'pre' });
+        if (pOrder.length)    sections.push({ label: 'Pre-Demonstration',  ids: pOrder,    type: 'pre' });
+        if (demoOrder.length) sections.push({ label: 'Product Demo',       ids: demoOrder, type: 'demo' });
+
+        fileId = data.fileId || null;
+        const allIds = sections.flatMap(s => s.ids);
+
+        // Load session from disk via IPC (main.js owns persistence)
+        let sess = null;
+        if (_ipc) { try { sess = await _ipc.loadTaskSession(); } catch {} }
+
+        if (sess && sess.fileId === fileId && Object.keys(sess.states || {}).length > 0) {
+            states    = sess.states;
+            timerSecs = (sess.timerSeconds !== undefined) ? sess.timerSeconds : TIMER_START;
+            secIdx    = Math.min(sess.secIdx  || 0, sections.length - 1);
+            taskIdx   = Math.min(sess.taskIdx || 0, sections[secIdx].ids.length - 1);
+            allIds.forEach(id => { if (!(id in states)) states[id] = 'pending'; });
+        } else {
+            states    = {};
+            timerSecs = TIMER_START;
+            secIdx    = 0;
+            taskIdx   = 0;
+            allIds.forEach(id => states[id] = 'pending');
+        }
+
+        show('task-view');
+        renderTimer();
+        render();
+        document.getElementById('timer-block').addEventListener('click', onTimerClick);
+    } catch(e) {
+        console.error(e);
+        show('no-file');
+    }
+}
+
+function show(which) {
+    document.getElementById('loading').style.display   = which === 'loading'   ? 'flex' : 'none';
+    document.getElementById('no-file').style.display   = which === 'no-file'   ? 'flex' : 'none';
+    document.getElementById('task-view').style.display = which === 'task-view' ? 'flex' : 'none';
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+    const sec  = sections[secIdx];
+    const id   = sec.ids[taskIdx];
+    const task = taskMap[id];
+    if (!task) return;
+
+    // Task content
+    document.getElementById('task-id').textContent    = task.id;
+    document.getElementById('task-name').textContent  = task.short_name;
+    document.getElementById('task-points').textContent = task.max_points != null ? task.max_points + ' pts' : '—';
+    document.getElementById('task-desc').textContent  = task.description;
+
+    // Status badge
+    const stEl = document.getElementById('task-status');
+    const st   = states[id] || 'pending';
+    if (st === 'complete') {
+        stEl.style.display = 'flex';
+        stEl.className     = 'task-status completed';
+        stEl.innerHTML     = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Completed';
+    } else if (st === 'skipped') {
+        stEl.style.display = 'flex';
+        stEl.className     = 'task-status skipped';
+        stEl.textContent   = '⚡ Skipped';
+    } else {
+        stEl.style.display = 'none';
+    }
+
+    // Complete / Uncomplete
+    const btnC = document.getElementById('btn-complete');
+    if (st === 'complete') {
+        btnC.textContent = 'Uncomplete';
+        btnC.className   = 'btn btn-primary';
+    } else {
+        btnC.textContent = 'Complete ✓';
+        btnC.className   = 'btn btn-success';
+    }
+
+    // Right button: always Skip or Next, always just +1, disabled only at very last task of last section
+    const btnR       = document.getElementById('btn-right');
+    const isLastTask = secIdx === sections.length - 1 && taskIdx >= sec.ids.length - 1;
+    if (st === 'complete') {
+        btnR.textContent = 'Next →';
+        btnR.className   = 'btn btn-primary';
+    } else {
+        btnR.textContent = 'Skip →';
+        btnR.className   = 'btn btn-warn';
+    }
+    btnR.disabled = isLastTask;
+
+    // Back — disabled only at very first task of first section
+    document.getElementById('btn-back').disabled = (secIdx === 0 && taskIdx === 0);
+
+    // Task number within section
+    document.getElementById('task-num').textContent = '#' + (taskIdx + 1);
+
+    // Section header
+    document.getElementById('section-name').textContent = sec.label;
+
+    // Per-section progress
+    const secDone  = sec.ids.filter(i => states[i] === 'complete').length;
+    const secTotal = sec.ids.length;
+    document.getElementById('section-progress-fill').style.width = (secDone / secTotal * 100) + '%';
+    document.getElementById('section-progress-label').textContent = secDone + '/' + secTotal;
+
+    // Section bar color class
+    const bar = document.getElementById('section-bar');
+    bar.className = '';
+    if (sec.type === 'demo') {
+        bar.classList.add(timerColorClass());
+        document.getElementById('timer-block').style.display = 'flex';
+    } else {
+        document.getElementById('timer-block').style.display = 'none';
+    }
+
+    // Section jump buttons — back and/or forward
+    const hasPrev = secIdx > 0;
+    const hasNext = secIdx < sections.length - 1;
+    const wrap    = document.getElementById('section-jump-wrap');
+    const btnBack = document.getElementById('btn-section-back');
+    const btnFwd  = document.getElementById('btn-section-fwd');
+    if (hasPrev || hasNext) {
+        wrap.style.display = 'flex';
+        btnBack.style.display = hasPrev ? 'flex' : 'none';
+        btnFwd.style.display  = hasNext ? 'flex' : 'none';
+        if (hasPrev) btnBack.textContent = '← ' + sections[secIdx - 1].label;
+        if (hasNext) btnFwd.textContent  = sections[secIdx + 1].label + ' →';
+    } else {
+        wrap.style.display = 'none';
+    }
+
+    // Skip banner — only shows skips within current section
+    updateSkipBanner();
+    saveSession();
+}
+
+function timerColorClass() {
+    if (!timerRunning && timerSecs === TIMER_START) return 'demo-idle';
+    if (timerSecs > 5 * 60)  return 'demo-green';
+    if (timerSecs > 1 * 60)  return 'demo-yellow';
+    return 'demo-red';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goBack() {
+    if (taskIdx > 0) {
+        taskIdx--;
+    } else if (secIdx > 0) {
+        secIdx--;
+        taskIdx = sections[secIdx].ids.length - 1;
+    }
+    render();
+}
+
+function toggleComplete() {
+    const id = sections[secIdx].ids[taskIdx];
+    const wasComplete = states[id] === 'complete';
+    states[id] = wasComplete ? 'pending' : 'complete';
+    if (!wasComplete) advanceOne();
+    render();
+}
+
+function rightAction() {
+    const id = sections[secIdx].ids[taskIdx];
+    if (states[id] !== 'complete') states[id] = 'skipped';
+    advanceOne();
+    render();
+}
+
+function advanceOne() {
+    if (taskIdx < sections[secIdx].ids.length - 1) {
+        taskIdx++;
+    } else if (secIdx < sections.length - 1) {
+        secIdx++;
+        taskIdx = 0;
+    }
+    // At last task of last section — stay put
+}
+
+function jumpToNextSection() {
+    if (secIdx >= sections.length - 1) return;
+    secIdx++;
+    taskIdx = 0;
+    render();
+}
+
+function jumpToPrevSection() {
+    if (secIdx <= 0) return;
+    secIdx--;
+    taskIdx = 0;
+    render();
+}
+
+// ── Skip banner (current section only) ───────────────────────────────────────
+function updateSkipBanner() {
+    const ids     = sections[secIdx].ids;
+    const skipped = ids.filter(id => states[id] === 'skipped');
+    const banner  = document.getElementById('skip-banner');
+    if (skipped.length === 0) {
+        banner.classList.remove('visible', 'expanded');
+        return;
+    }
+    banner.classList.add('visible');
+    document.getElementById('skip-count').textContent = skipped.length;
+    document.getElementById('skip-list').innerHTML = skipped.map(id => {
+        const t = taskMap[id];
+        return `<div class="skip-item" onclick="jumpToTask('${id}')">
+            <span class="skip-item-id">${id}</span>
+            <span class="skip-item-name">${t ? t.short_name : id}</span>
+            <span class="skip-item-jump">Jump →</span>
+        </div>`;
+    }).join('');
+}
+
+function toggleSkipBanner() {
+    document.getElementById('skip-banner').classList.toggle('expanded');
+}
+
+function jumpToTask(id) {
+    const ids = sections[secIdx].ids;
+    const i   = ids.indexOf(id);
+    if (i === -1) return;
+    states[id] = 'pending';
+    taskIdx    = i;
+    render();
+    document.getElementById('skip-banner').classList.remove('expanded');
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────────
+function onTimerClick(e) {
+    if (e.altKey) {
+        // Option+click → reset
+        timerRunning = false;
+        clearInterval(timerHandle);
+        timerHandle = null;
+        timerSecs   = TIMER_START;
+    } else if (timerRunning) {
+        timerRunning = false;
+        clearInterval(timerHandle);
+        timerHandle = null;
+    } else {
+        timerRunning = true;
+        timerHandle  = setInterval(tickTimer, 1000);
+    }
+    renderTimer();
+    render();
+}
+
+function tickTimer() {
+    if (timerSecs > 0) {
+        timerSecs--;
+    } else {
+        // Time's up — keep at 0, stop
+        timerRunning = false;
+        clearInterval(timerHandle);
+        timerHandle = null;
+    }
+    renderTimer();
+    // Update bar color in place without full render
+    const bar = document.getElementById('section-bar');
+    if (sections[secIdx] && sections[secIdx].type === 'demo') {
+        bar.className = timerColorClass();
+    }
+    saveSession();
+}
+
+function renderTimer() {
+    const m = Math.floor(timerSecs / 60);
+    const s = timerSecs % 60;
+    document.getElementById('timer-digits').textContent = m + ':' + String(s).padStart(2, '0');
+    let hint = 'tap to start';
+    if (timerSecs === 0)          hint = 'time is up';
+    else if (timerRunning)        hint = 'tap to pause';
+    else if (timerSecs < TIMER_START) hint = 'tap to resume';
+    document.getElementById('timer-hint').textContent = hint;
+}
+
+// ── Persist (IPC — main.js writes to disk synchronously) ─────────────────────
+let _saveHandle = null;
+function saveSession() {
+    clearTimeout(_saveHandle);
+    _saveHandle = setTimeout(() => {
+        if (_ipc) {
+            _ipc.saveTaskSession({ fileId, secIdx, taskIdx, states, timerSeconds: timerSecs });
+        }
+    }, 250);
+}
+
+// ── Poll for active file changes ──────────────────────────────────────────────
+function startPolling() {
+    setInterval(async () => {
+        try {
+            const res  = await fetch('/api/tasks/active');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.fileId !== fileId) await init();
+        } catch {}
+    }, 4000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    startPolling();
+    if (_ipc) {
+        _ipc.onTaskSessionReset(() => {
+            states    = {};
+            timerSecs = TIMER_START;
+            secIdx    = 0;
+            taskIdx   = 0;
+            if (sections.length) {
+                sections.flatMap(s => s.ids).forEach(id => states[id] = 'pending');
+            }
+            if (timerRunning) {
+                clearInterval(timerHandle);
+                timerHandle  = null;
+                timerRunning = false;
+            }
+            renderTimer();
+            render();
+        });
+    }
+});
+</script>
+</body>
+</html>

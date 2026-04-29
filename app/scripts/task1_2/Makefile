@@ -1,20 +1,3 @@
-###########################################
-# OPENCV FIX - MODIFIED, DO NOT OVERWRITE #
-###########################################
-
-OPENCV_CFLAGS = -I../../app/Resources/opencv-include
-OPENCV_LIBS = -L../../app/Resources/opencv-libs -lopencv_core -lopencv_imgproc -lopencv_calib3d
-
-all: stereo_distance
-	@bash ../../fix-opencv.sh
-
-stereo_distance: $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-
-###########################################
-#             END OPENCV FIX              #
-###########################################
-
 CXX = clang++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -I./include $(shell pkg-config --cflags opencv4)
 LDFLAGS = $(shell pkg-config --libs opencv4)
@@ -28,7 +11,10 @@ OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
 
 .PHONY: all clean run help
 
+# After linking, rewrite the Homebrew paths baked in by `pkg-config --libs`
+# so the binary resolves to the bundled OpenCV libs on other machines.
 all: $(TARGET)
+	@bash ../../fix-opencv.sh
 
 $(TARGET): $(OBJECTS)
 	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)

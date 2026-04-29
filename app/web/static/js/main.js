@@ -1445,6 +1445,7 @@ window.addEventListener('DOMContentLoaded', () => {
     window.electronAPI.onTrafficLightsVisible(() => document.documentElement.classList.remove('no-traffic-lights'));
   }
 
+
   if (window.electronAPI?.onWindowResizeStart) {
     window.electronAPI.onWindowResizeStart(pauseDrawLoop);
     window.electronAPI.onWindowResizeEnd(resumeDrawLoop);

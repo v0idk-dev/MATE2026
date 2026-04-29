@@ -532,6 +532,195 @@ def t2_1():
 def t2_5():
     return render_template('2_5.html')
 
+@app.route('/t/tasks')
+def t_tasks():
+    return render_template('tasks.html')
+
+# ── Task file API ──────────────────────────────────────────────────────────────
+
+_TASKS_DIR = os.path.join(_APP_SUPPORT_DIR, 'tasks')
+_TASKS_JSON = os.path.join(PROJECT_ROOT, 'tasks.json')
+os.makedirs(_TASKS_DIR, exist_ok=True)
+
+def _read_tasks_json():
+    try:
+        with open(_TASKS_JSON) as f:
+            return json.load(f)
+    except Exception:
+        return {'tasks': [], 'order': {}}
+
+def _parse_m26tl(content):
+    """Plain list of task IDs, one per line. Comments (#) and blank lines ignored."""
+    order = []
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if line and not line.startswith('#'):
+            order.append(line)
+    return order
+
+# ── In-process session state (survives window close/reopen within same app run) ──
+_task_session = {
+    'fileId': None,
+    'secIdx': 0,
+    'taskIdx': 0,
+    'states': {},
+    'timerSeconds': 15 * 60,
+}
+_task_session_lock = threading.Lock()
+
+@app.route('/api/tasks/all')
+def api_tasks_all():
+    task_data = _read_tasks_json()
+    return jsonify({'tasks': task_data.get('tasks', [])})
+
+@app.route('/api/tasks/active')
+def api_tasks_active():
+    s = _settings_read()
+    active_id = s.get('activeTaskFileId')
+    save_on_relaunch = bool(s.get('saveTasksOnRelaunch', False))
+    if not active_id:
+        return jsonify({'error': 'no active file'}), 404
+    m26tl_path = os.path.join(_TASKS_DIR, active_id + '.m26tl')
+    if not os.path.exists(m26tl_path):
+        return jsonify({'error': 'file not found'}), 404
+    try:
+        with open(m26tl_path) as f:
+            content = f.read()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    demo_order = _parse_m26tl(content)
+    task_data = _read_tasks_json()
+    tasks_by_id = {t['id']: t for t in task_data.get('tasks', [])}
+    d_order = task_data.get('order', {}).get('D', [])
+    p_order = task_data.get('order', {}).get('P', [])
+    # All tasks combined for lookup
+    all_tasks = list(task_data.get('tasks', []))
+    with _task_session_lock:
+        session = dict(_task_session)
+    return jsonify({
+        'fileId': active_id,
+        'dOrder': d_order,
+        'pOrder': p_order,
+        'demoOrder': demo_order,
+        'allTasks': all_tasks,
+        'saveOnRelaunch': save_on_relaunch,
+        'session': session,
+    })
+
+@app.route('/api/tasks/session', methods=['POST'])
+def api_tasks_session():
+    """Save session state server-side so it survives window close/reopen."""
+    data = request.get_json(force=True)
+    with _task_session_lock:
+        for key in ('fileId', 'secIdx', 'taskIdx', 'states', 'timerSeconds'):
+            if key in data:
+                _task_session[key] = data[key]
+    # Always write to disk — load at startup only when saveTasksOnRelaunch is on.
+    # saveTasksOnRelaunch is owned by main.js (not Swift) to prevent clobbering.
+    try:
+        sess_path = os.path.join(_APP_SUPPORT_DIR, 'task_session.json')
+        with open(sess_path, 'w') as fh:
+            json.dump(dict(_task_session), fh)
+    except Exception:
+        pass
+    return jsonify({'ok': True})
+
+def _load_task_session_from_disk():
+    """Startup: load session from disk only if saveTasksOnRelaunch is on."""
+    try:
+        s = _settings_read()
+        if not bool(s.get('saveTasksOnRelaunch', False)):
+            return
+        sess_path = os.path.join(_APP_SUPPORT_DIR, 'task_session.json')
+        with open(sess_path) as fh:
+            saved = json.load(fh)
+        with _task_session_lock:
+            _task_session.update(saved)
+    except Exception:
+        pass
+
+_load_task_session_from_disk()
+
+@app.route('/api/tasks/reset', methods=['POST'])
+def api_tasks_reset():
+    with _task_session_lock:
+        _task_session['secIdx']       = 0
+        _task_session['taskIdx']      = 0
+        _task_session['states']       = {}
+        _task_session['timerSeconds'] = 15 * 60
+    try:
+        sess_path = os.path.join(_APP_SUPPORT_DIR, 'task_session.json')
+        os.remove(sess_path)
+    except Exception:
+        pass
+    return jsonify({'ok': True})
+
+@app.route('/api/tasks/list')
+def api_tasks_list():
+    s = _settings_read()
+    return jsonify({'files': s.get('taskFiles', []), 'active': s.get('activeTaskFileId')})
+
+@app.route('/api/tasks/upload', methods=['POST'])
+def api_tasks_upload():
+    if 'file' not in request.files:
+        return jsonify({'error': 'no file'}), 400
+    f = request.files['file']
+    if not f.filename.endswith('.m26tl'):
+        return jsonify({'error': 'must be .m26tl'}), 400
+    import uuid
+    file_id = str(uuid.uuid4())
+    dest = os.path.join(_TASKS_DIR, file_id + '.m26tl')
+    f.save(dest)
+    name = f.filename[:-6]
+    s = _settings_read()
+    files = s.get('taskFiles', [])
+    files.append({'id': file_id, 'name': name})
+    s['taskFiles'] = files
+    _write_settings_key('taskFiles', files)
+    return jsonify({'ok': True, 'id': file_id, 'name': name})
+
+@app.route('/api/tasks/rename', methods=['POST'])
+def api_tasks_rename():
+    data = request.get_json(force=True)
+    file_id = data.get('id')
+    name = (data.get('name') or '').strip()
+    if not file_id or not name:
+        return jsonify({'error': 'missing id or name'}), 400
+    s = _settings_read()
+    files = s.get('taskFiles', [])
+    for entry in files:
+        if entry['id'] == file_id:
+            entry['name'] = name
+            break
+    _write_settings_key('taskFiles', files)
+    return jsonify({'ok': True})
+
+@app.route('/api/tasks/select', methods=['POST'])
+def api_tasks_select():
+    data = request.get_json(force=True)
+    file_id = data.get('id')
+    if file_id and not os.path.exists(os.path.join(_TASKS_DIR, file_id + '.m26tl')):
+        return jsonify({'error': 'not found'}), 404
+    _write_settings_key('activeTaskFileId', file_id)
+    return jsonify({'ok': True, 'active': file_id})
+
+@app.route('/api/tasks/delete', methods=['POST'])
+def api_tasks_delete():
+    data = request.get_json(force=True)
+    file_id = data.get('id')
+    if not file_id:
+        return jsonify({'error': 'missing id'}), 400
+    try:
+        os.remove(os.path.join(_TASKS_DIR, file_id + '.m26tl'))
+    except Exception:
+        pass
+    s = _settings_read()
+    files = [f for f in s.get('taskFiles', []) if f['id'] != file_id]
+    _write_settings_key('taskFiles', files)
+    if s.get('activeTaskFileId') == file_id:
+        _write_settings_key('activeTaskFileId', None)
+    return jsonify({'ok': True})
+
 # ── Model listing ──────────────────────────────────────────────────────────────
  
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models')

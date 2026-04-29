@@ -1,7 +1,8 @@
 {
   "name": "mate-2026-robot-controller",
-  "version": "0.0.2",
-  "description": "MATE 2026 ROV Control System",
+  "version": "0.2.0",
+  "buildNumber": 62,
+  "description": "MATE 2026 ROV Control System for SFS Robotics",
   "author": "Dogukan Koc",
   "main": "main.js",
   "scripts": {
@@ -11,11 +12,13 @@
     "pack": "electron-builder --dir --arm64"
   },
   "devDependencies": {
-    "electron": "^28.3.3",
-    "electron-builder": "^24.13.3"
+    "@electron/rebuild": "^4.0.4",
+    "electron": "^40.6.1",
+    "electron-builder": "^24.13.3",
+    "node-gyp": "^12.3.0"
   },
   "build": {
-    "appId": "dev.v0idk.mate2026",
+    "appId": "dev.v0idk.mate2026.app",
     "productName": "MATE 2026 Robot Controller",
     "copyright": "Copyright © 2026 Dogukan Koc",
     "mac": {
@@ -37,24 +40,25 @@
       "darkModeSupport": true
     },
     "dmg": {
-      "title": "MATE Robot Control ${version}",
+      "title": "MATE 2026 Robot Controller v${version}",
       "icon": "build/icon.icns",
-      "background": null,
+      "format": "UDZO",
+      "writeUpdateInfo": false,
       "contents": [
         {
           "x": 130,
-          "y": 220
+          "y": 130
         },
         {
           "x": 410,
-          "y": 220,
+          "y": 130,
           "type": "link",
           "path": "/Applications"
         }
       ],
       "window": {
         "width": 540,
-        "height": 380
+        "height": 448
       }
     },
     "extraResources": [
@@ -88,26 +92,45 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "models",
+        "to": "models",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "files": [
       "main.js",
+      "preload.js",
       "package.json",
+      "cameras.json",
+      "build/SpaceMono-Bold.ttf",
+      "build/SpaceMono-Regular.ttf",
+      "build/background.png",
+      "native/settings/build/Release/settings.node",
+      "native/settings/build/Release/libSettingsUI.dylib",
       "!**/node_modules/**/*",
       "!**/.git/**/*",
       "!**/dist/**/*"
     ],
     "asarUnpack": [
       "**/*.node",
+      "**/*.dylib",
+      "build/SpaceMono-Bold.ttf",
+      "build/SpaceMono-Regular.ttf",
       "app/Resources/**/*",
       "scripts/**/*",
-      "web/**/*"
+      "web/**/*",
+      "models/**/*"
     ]
   },
   "keywords": [],
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@fontsource/space-mono": "^5.2.9",
     "express": "^5.2.1",
     "ws": "^8.19.0"
   }

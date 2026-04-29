@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain, nativeImage, nativeTheme } = require('electron');
-const { spawn, exec }  = require('child_process');
+const { spawn, spawnSync, exec }  = require('child_process');
 const http = require('http');
 const path = require('path');
 const fs   = require('fs');
@@ -16,15 +16,41 @@ const _APP_COPYRIGHT    = 'Copyright © 2026 Dogukan Koc';
 
 app.name = _APP_PRODUCT_NAME;
 
+// Wipe Chromium's persisted per-origin zoom levels before any window opens
+try {
+    const _prefPath = require('path').join(app.getPath('userData'), 'Preferences');
+    const _prefData = JSON.parse(require('fs').readFileSync(_prefPath, 'utf8'));
+    if (_prefData.partition && _prefData.partition.per_host_zoom_levels) {
+        delete _prefData.partition.per_host_zoom_levels;
+        require('fs').writeFileSync(_prefPath, JSON.stringify(_prefData));
+    }
+} catch (_) {}
+
 let mainWindow;
 let _devToolsWin = null;
+let _taskDevToolsWin = null;
+let _taskWin = null;
 let flaskProcess;
 let autoJoinInterval = null;
+let _isFirstLaunch = true; // true only until the first task-session-load call
+
+// Per-window zoom state. Zoom ≤ 1.0 (cannot scale up past default).
+// Size is always base * factor — never drifts.
+const _winZoom = new WeakMap(); // BrowserWindow → { factor, baseW, baseH, minW, minH, maxW, maxH, tlX?, tlY? }
+// Persisted factors survive window close/reopen
+let _mainZoomFactor = 1.0;
+let _taskZoomFactor = 1.0;
 
 app.commandLine.appendSwitch('disable-features', 'UseOzonePlatform,WidgetLayeriting,RecordWebAppDebugInfo');
 app.commandLine.appendSwitch('disable-partial-raster');
 app.commandLine.appendSwitch('disable-software-rasterizer');
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
+
+// Spawn Flask BEFORE the AppKit launch sequence completes, then block this
+// thread until it answers. The dock keeps bouncing the entire time because
+// applicationDidFinishLaunching: hasn't returned yet.
+startFlaskServer();
+waitForServerSync();
 
 
 // ── Native settings addon (SwiftUI window inside this process) ────────────────
@@ -51,6 +77,145 @@ function openSettings() {
     }
 }
 
+// ── Zoom — applies to ALL registered windows simultaneously ──────────────────
+// factor is always absolute (0.8–1.0). Size = base * factor — never drifts,
+// never breaks at min/max. Traffic lights move but don't resize (native limit).
+
+function _applyZoom(win, newFactor) {
+    if (!win || win.isDestroyed()) return;
+    const z = _winZoom.get(win);
+    if (!z) return;
+    const f = Math.max(0.8, Math.min(1.0, Math.round(newFactor * 10) / 10));
+    // Re-derive base from current live size so zoom is always relative to what
+    // the user actually sees right now (respects manual resizes).
+    const [curW, curH] = win.getSize();
+    z.baseW = Math.round(curW / z.factor);
+    z.baseH = Math.round(curH / z.factor);
+    z.factor = f;
+    win.webContents.setZoomFactor(f);
+    // Clear constraints before resize so setSize is never clamped
+    win.setMinimumSize(0, 0);
+    if (z.maxW) win.setMaximumSize(99999, 99999);
+    win.setSize(Math.round(z.baseW * f), Math.round(z.baseH * f));
+    win.setMinimumSize(Math.round(z.minW * f), Math.round(z.minH * f));
+    if (z.maxW) win.setMaximumSize(Math.round(z.maxW * f), Math.round(z.maxH * f));
+    const addon = loadSettingsAddon();
+    if (addon && addon.scaleTrafficLights) {
+        try { addon.scaleTrafficLights(win.getNativeWindowHandle(), f); } catch {}
+    }
+    win.webContents.send('zoom-change', f);
+}
+
+function _zoomAllDelta(delta) {
+    // Compute new factor from main window (source of truth); task window mirrors it
+    const curFactor = _mainZoomFactor;
+    const newFactor = Math.max(0.8, Math.min(1.0, Math.round((curFactor + delta) * 10) / 10));
+    _mainZoomFactor = newFactor;
+    _taskZoomFactor = newFactor;
+    for (const win of BrowserWindow.getAllWindows()) {
+        if (!_winZoom.has(win) || win.isDestroyed()) continue;
+        _applyZoom(win, newFactor);
+    }
+    buildMenu();
+}
+
+function _zoomAllReset() {
+    _mainZoomFactor = 1.0;
+    _taskZoomFactor = 1.0;
+    for (const win of BrowserWindow.getAllWindows()) {
+        if (!_winZoom.has(win) || win.isDestroyed()) continue;
+        _applyZoom(win, 1.0);
+    }
+    buildMenu();
+}
+
+function openTaskCounter() {
+    if (_taskWin && !_taskWin.isDestroyed()) {
+        _taskWin.focus();
+        return;
+    }
+    const tf = _taskZoomFactor;
+    _taskWin = new BrowserWindow({
+        width:    Math.round(400 * tf), height:    Math.round(580 * tf),
+        minWidth: Math.round(320 * tf), minHeight: Math.round(420 * tf),
+        maxWidth: Math.round(520 * tf), maxHeight: Math.round(720 * tf),
+        alwaysOnTop: true,
+        backgroundColor: '#0a0e1a',
+        show: false,
+        titleBarStyle: 'hidden',
+        trafficLightPosition: { x: 10, y: 7 },
+        webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, 'preload.js') },
+    });
+    _winZoom.set(_taskWin, { factor: tf, baseW: 400, baseH: 580, minW: 320, minH: 420, maxW: 520, maxH: 720 });
+    // Clear Electron's persisted zoom for this origin
+    _taskWin.webContents.setZoomFactor(1.0);
+    _taskWin.webContents.setZoomLevel(0);
+    const addon = loadSettingsAddon();
+    if (addon && addon.setManaged) addon.setManaged(_taskWin.getNativeWindowHandle());
+    _taskWin.loadURL('http://localhost:5001/t/tasks');
+    _taskWin.once('ready-to-show', () => {
+        if (addon && addon.setManaged) addon.setManaged(_taskWin.getNativeWindowHandle());
+        if (_taskZoomFactor !== 1.0) {
+            _taskWin.webContents.setZoomFactor(_taskZoomFactor);
+            if (addon && addon.scaleTrafficLights)
+                try { addon.scaleTrafficLights(_taskWin.getNativeWindowHandle(), _taskZoomFactor); } catch {}
+        }
+        _taskWin.show();
+    });
+    _taskWin.webContents.on('before-input-event', (e, input) => {
+        if (input.meta && input.key === 'w') {
+            e.preventDefault();
+            if (_taskWin && !_taskWin.isDestroyed()) _taskWin.close();
+        }
+        if (input.meta && !input.shift && (input.key === '=' || input.key === '+')) {
+            e.preventDefault(); _zoomAllDelta(+0.1);
+        }
+        if (input.meta && input.key === '-') {
+            e.preventDefault(); _zoomAllDelta(-0.1);
+        }
+        if (input.meta && input.key === '0') {
+            e.preventDefault(); _zoomAllReset();
+        }
+    });
+    _taskWin.on('closed', () => {
+        if (_taskDevToolsWin && !_taskDevToolsWin.isDestroyed()) _taskDevToolsWin.close();
+        _taskWin = null;
+    });
+}
+
+function openTaskDevTools() {
+    if (!_taskWin || _taskWin.isDestroyed()) return;
+    if (_taskDevToolsWin && !_taskDevToolsWin.isDestroyed()) {
+        _taskDevToolsWin.focus();
+        return;
+    }
+    _taskDevToolsWin = new BrowserWindow({
+        width: 900, height: 650,
+        backgroundColor: '#1e1e1e',
+        show: false,
+    });
+    const addon = loadSettingsAddon();
+    if (addon && addon.setManaged) addon.setManaged(_taskDevToolsWin.getNativeWindowHandle());
+    _taskWin.webContents.setDevToolsWebContents(_taskDevToolsWin.webContents);
+    _taskWin.webContents.openDevTools({ mode: 'detach', activate: true });
+    _taskDevToolsWin.once('ready-to-show', () => {
+        if (addon && addon.setManaged) addon.setManaged(_taskDevToolsWin.getNativeWindowHandle());
+        _taskDevToolsWin.setTitle('DevTools — Task Tracker');
+        setTimeout(() => { if (_taskDevToolsWin && !_taskDevToolsWin.isDestroyed()) _taskDevToolsWin.show(); }, 80);
+    });
+    _taskDevToolsWin.webContents.on('did-finish-load', () => {
+        if (_taskDevToolsWin && !_taskDevToolsWin.isDestroyed())
+            _taskDevToolsWin.setTitle('DevTools — Task Tracker');
+    });
+    _taskDevToolsWin.webContents.on('before-input-event', (e, input) => {
+        if (input.meta && input.key === 'w') {
+            e.preventDefault();
+            if (_taskDevToolsWin && !_taskDevToolsWin.isDestroyed()) _taskDevToolsWin.close();
+        }
+    });
+    _taskDevToolsWin.on('closed', () => { _taskDevToolsWin = null; });
+}
+
 function openDevTools() {
     if (!mainWindow) return;
     if (_devToolsWin && !_devToolsWin.isDestroyed()) {
@@ -62,22 +227,18 @@ function openDevTools() {
         backgroundColor: '#1e1e1e',
         show: false,
     });
-    // Set .managed before openDevTools so Electron never gets a chance to
-    // override the collection behavior with .fullScreenAuxiliary.
     const addon = loadSettingsAddon();
-    if (addon && addon.setManaged) {
-        addon.setManaged(_devToolsWin.getNativeWindowHandle());
-    }
+    if (addon && addon.setManaged) addon.setManaged(_devToolsWin.getNativeWindowHandle());
     mainWindow.webContents.setDevToolsWebContents(_devToolsWin.webContents);
     mainWindow.webContents.openDevTools({ mode: 'detach', activate: true });
-    // Re-apply after openDevTools in case Electron resets it, then show once painted.
     _devToolsWin.once('ready-to-show', () => {
-        if (addon && addon.setManaged) {
-            addon.setManaged(_devToolsWin.getNativeWindowHandle());
-        }
+        if (addon && addon.setManaged) addon.setManaged(_devToolsWin.getNativeWindowHandle());
+        _devToolsWin.setTitle('DevTools — Main Window');
         setTimeout(() => { if (_devToolsWin && !_devToolsWin.isDestroyed()) _devToolsWin.show(); }, 80);
     });
-    // Cmd+W closes devtools window, not main window
+    _devToolsWin.webContents.on('did-finish-load', () => {
+        if (_devToolsWin && !_devToolsWin.isDestroyed()) _devToolsWin.setTitle('DevTools — Main Window');
+    });
     _devToolsWin.webContents.on('before-input-event', (e, input) => {
         if (input.meta && input.key === 'w') {
             e.preventDefault();
@@ -184,6 +345,36 @@ function stopAutoJoin() {
 // ── Dev mode state (persists across menu rebuilds) ───────────────────────────
 let _devMode = false;
 
+// ── Task session persistence (owned by main.js, not Flask) ───────────────────
+function taskSessionPath() {
+    return path.join(app.getPath('userData'), 'task_session.json');
+}
+
+function loadTaskSession() {
+    try { return JSON.parse(fs.readFileSync(taskSessionPath(), 'utf8')); }
+    catch { return null; }
+}
+
+function writeTaskSession(data) {
+    try { fs.writeFileSync(taskSessionPath(), JSON.stringify(data, null, 2)); } catch {}
+}
+
+function deleteTaskSession() {
+    try { fs.unlinkSync(taskSessionPath()); } catch {}
+}
+
+// ── saveTasksOnRelaunch flag (persisted in settings.json) ────────────────────
+function loadSaveTasksFlag() {
+    return !!(loadSettings().saveTasksOnRelaunch);
+}
+function setSaveTasksFlag(val) {
+    let s = loadSettings();
+    s.saveTasksOnRelaunch = val;
+    try { fs.writeFileSync(settingsPath(), JSON.stringify(s, null, 2)); } catch {}
+    buildMenu();
+    if (mainWindow) mainWindow.webContents.send('settings-photo-changed');
+}
+
 // ── Simulate flags (persisted in settings.json) ───────────────────────────────
 function loadSimFlags() {
     const s = loadSettings();
@@ -213,6 +404,10 @@ const _ICON_NAMES = {
     reload:   'arrow.clockwise',
     devtools: 'wrench.and.screwdriver',
     devoff:   'xmark',
+    zoomIn:   'plus.magnifyingglass',
+    zoomOut:  'minus.magnifyingglass',
+    zoomReset:'square.arrowtriangle.4.outward',
+    fullscreen:'arrow.up.left.and.arrow.down.right',
 };
 
 function _menuIcon(key) {
@@ -243,7 +438,7 @@ function buildMenu() {
     // The KeyboardEvent passed to click() includes modifiers, so no alternate item needed.
     const debugItems = [
         {
-            label: 'Reload App',
+            label: 'Reload Current Window',
             accelerator: _devMode ? 'CmdOrCtrl+R' : undefined,
             icon: _menuIcon('reload'),
             click: (menuItem, win, event) => {
@@ -251,7 +446,9 @@ function buildMenu() {
                     _devMode = true;
                     buildMenu();
                 } else {
-                    if (mainWindow) mainWindow.webContents.reload();
+                    const focused = require('electron').BrowserWindow.getFocusedWindow();
+                    const target = focused || mainWindow;
+                    if (target) target.webContents.reload();
                 }
             },
         },
@@ -282,7 +479,14 @@ function buildMenu() {
             label: 'Developer Tools',
             accelerator: 'CmdOrCtrl+Alt+I',
             icon: _menuIcon('devtools'),
-            click: () => openDevTools(),
+            click: () => {
+                const focused = require('electron').BrowserWindow.getFocusedWindow();
+                if (focused && focused === _taskWin && !focused.isDestroyed()) {
+                    openTaskDevTools();
+                } else {
+                    openDevTools();
+                }
+            },
         });
         debugItems.push({
             label: 'Exit Developer Mode',
@@ -310,13 +514,90 @@ function buildMenu() {
         },
         {
             label: 'Window',
-            role: 'windowMenu'
+            role: 'windowMenu',
+        },
+        {
+            label: 'View',
+            submenu: [
+                {
+                    label: 'Zoom In',
+                    accelerator: 'Cmd+=',
+                    icon: _menuIcon('zoomIn'),
+                    enabled: _mainZoomFactor < 1.0,
+                    click: () => _zoomAllDelta(+0.1),
+                },
+                {
+                    label: 'Zoom Out',
+                    accelerator: 'Cmd+-',
+                    icon: _menuIcon('zoomOut'),
+                    enabled: _mainZoomFactor > 0.8,
+                    click: () => _zoomAllDelta(-0.1),
+                },
+                {
+                    label: 'Reset Zoom',
+                    accelerator: 'Cmd+0',
+                    icon: _menuIcon('zoomReset'),
+                    enabled: _mainZoomFactor !== 1.0,
+                    click: () => _zoomAllReset(),
+                },
+            ],
+        },
+        {
+            label: 'Tasks',
+            submenu: [
+                {
+                    label: 'Save Tasks on Relaunch',
+                    type: 'checkbox',
+                    checked: loadSaveTasksFlag(),
+                    click: (item) => setSaveTasksFlag(item.checked),
+                },
+                { type: 'separator' },
+                {
+                    label: 'Launch Task Tracker',
+                    accelerator: 'Cmd+T',
+                    icon: (() => {
+                        try {
+                            const img = nativeImage.createFromNamedImage('arrow.up.right');
+                            if (!img || img.isEmpty()) return undefined;
+                            const sz = img.getSize();
+                            const scale = 14 / sz.height;
+                            const sized = img.resize({ width: Math.round(sz.width * scale), height: 14 });
+                            sized.setTemplateImage(true);
+                            return sized;
+                        } catch { return undefined; }
+                    })(),
+                    click: () => openTaskCounter(),
+                },
+                {
+                    label: 'Reset Tracker',
+                    icon: _menuIcon('reload'),
+                    click: () => {
+                        deleteTaskSession();
+                        if (_taskWin && !_taskWin.isDestroyed()) {
+                            _taskWin.webContents.send('task-session-reset');
+                        }
+                    },
+                },
+            ],
         },
         { label: 'Debug', submenu: debugItems },
     ];
 
     _currentMenu = Menu.buildFromTemplate(template);
     Menu.setApplicationMenu(_currentMenu);
+    const addon = loadSettingsAddon();
+    if (addon) {
+        // Override the Zoom In key-equivalent display to "+" while keeping
+        // the actual binding on Cmd+= (the physical key on US keyboards).
+        if (addon.setMenuKeyEquivalent) {
+            try { addon.setMenuKeyEquivalent('Zoom In', '+', false); } catch {}
+        }
+        // Give the auto-injected native fullscreen item icon, label, and a
+        // separator above it; also installs FS notification observers (once).
+        if (addon.decorateFullScreenMenuItem) {
+            try { addon.decorateFullScreenMenuItem(); } catch {}
+        }
+    }
 }
 
 // ── Flask server ──────────────────────────────────────────────────────────────
@@ -333,17 +614,26 @@ function startFlaskServer() {
         cwd: path.join(root, 'web'),
         env: { ...process.env, ELECTRON_IS_PACKAGED: app.isPackaged ? '1' : '' }
     });
-    flaskProcess.stdout.on('data', d => {
-        try {
-            const text = `${d}`;
-            process.stdout.write(text);
-            if (text.includes('MATE_SERVER_READY') && !mainWindow) {
-                createWindow();
-            }
-        } catch {}
-    });
+    flaskProcess.stdout.on('data', d => { try { process.stdout.write(`${d}`); } catch {} });
     flaskProcess.stderr.on('data', d => { try { process.stderr.write(`${d}`); } catch {} });
     flaskProcess.on('error', err => { try { console.error('Server error:', err); } catch {} });
+}
+
+// Block the main thread until Flask answers on :5001. Called BEFORE app
+// finishes launching so macOS keeps the dock icon bouncing the whole time.
+function waitForServerSync(timeoutMs = 30000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const r = spawnSync('/usr/bin/curl', [
+            '-s', '-o', '/dev/null', '-w', '%{http_code}',
+            '--max-time', '1',
+            'http://127.0.0.1:5001/'
+        ], { encoding: 'utf8' });
+        const code = (r.stdout || '').trim();
+        if (code && code !== '000') return true;
+        spawnSync('/bin/sleep', ['0.1']);
+    }
+    return false;
 }
 
 // ── Main window ───────────────────────────────────────────────────────────────
@@ -355,11 +645,14 @@ function createWindow() {
         trafficLightPosition: { x: 12, y: 9 },
         backgroundColor: '#1a1a1a',
     });
+    _winZoom.set(mainWindow, { factor: 1.0, baseW: 1820, baseH: 1020, minW: 1600, minH: 900, maxW: 0, maxH: 0 });
+    // Clear Electron's persisted zoom for this origin so it always starts at 1.0
+    mainWindow.webContents.setZoomFactor(1.0);
+    mainWindow.webContents.setZoomLevel(0);
     var simQ = `?sc=${_simFlags.connected?1:0}&so=${_simFlags.opmode?1:0}&sd=${_simFlags.data?1:0}`;
     mainWindow.loadURL('http://localhost:5001' + simQ);
     mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('traffic-lights-hidden'));
     mainWindow.on('leave-full-screen',  () => mainWindow.webContents.send('traffic-lights-visible'));
-    // On every load (including reload), tell renderer current fullscreen state
     mainWindow.webContents.on('did-finish-load', () => {
         var newSim = `?sc=${_simFlags.connected?1:0}&so=${_simFlags.opmode?1:0}&sd=${_simFlags.data?1:0}`;
         if (newSim !== simQ) {
@@ -368,13 +661,38 @@ function createWindow() {
         }
         if (mainWindow.isFullScreen()) mainWindow.webContents.send('traffic-lights-hidden')
     });
-    mainWindow.on('closed', () => { mainWindow = null; });
+    mainWindow.on('closed', () => {
+        if (_devToolsWin && !_devToolsWin.isDestroyed()) _devToolsWin.close();
+        mainWindow = null;
+    });
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
     ipcMain.on('open-settings', () => openSettings());
+    ipcMain.on('open-task-counter', () => openTaskCounter());
+
+
+    // Task session: renderer sends state on every change; main.js writes synchronously.
+    // Always write to disk — read back at load time only if flag is on.
+    ipcMain.on('task-session-save', (_, data) => {
+        writeTaskSession(data);
+    });
+    ipcMain.handle('task-session-load', () => {
+        const firstLaunch = _isFirstLaunch;
+        _isFirstLaunch = false;
+        // On relaunch: only restore if flag is on
+        // On window reopen within same session: always restore
+        if (firstLaunch && !loadSaveTasksFlag()) return null;
+        return loadTaskSession();
+    });
+    ipcMain.on('task-session-reset', () => {
+        deleteTaskSession();
+        if (_taskWin && !_taskWin.isDestroyed()) {
+            _taskWin.webContents.send('task-session-reset');
+        }
+    });
 
     ipcMain.handle('list-cameras', () => {
         const addon = loadSettingsAddon();
@@ -422,7 +740,8 @@ app.whenReady().then(() => {
     buildMenu();
     nativeTheme.on('updated', () => buildMenu());
     loadSettingsAddon(); // load the .node early so SwiftUI initialises on the main thread
-    startFlaskServer();
+    // Flask was started synchronously at top-level and is already up.
+    createWindow();
     watchSettings();
     const s = loadSettings();
     if (s.autoJoinEnabled && s.autoJoinSsid) {

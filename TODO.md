@@ -43,7 +43,9 @@
   * [X] Add server start detection to eliminate false starts that require a reload
 * [X] Create frontend for the AI model
 * [X] Implement the AI model locally into the app
-* [ ] Add Task Counter (cmd+t and in menu bar) with separate floating always-on-top window
+* [X] Add Task Counter (cmd+t and in menu bar) with separate floating always-on-top window
+  * [X] if a window closes, its respective devtools should close. devtools for task counter has title, but main window doesnt.
+  * [X] fix button navigation
 * [X] Add debug menu bar item to launch developer tools and to reload
   * [X] fix the freaking icons
   * [X] fix the hidden dev mode launcher

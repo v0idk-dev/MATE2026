@@ -1,7 +1,7 @@
 {
   "name": "mate-2026-robot-controller",
-  "version": "0.1.1",
-  "buildNumber": 51,
+  "version": "0.2.0",
+  "buildNumber": 62,
   "description": "MATE 2026 ROV Control System for SFS Robotics",
   "author": "Dogukan Koc",
   "main": "main.js",
@@ -18,7 +18,7 @@
     "node-gyp": "^12.3.0"
   },
   "build": {
-    "appId": "dev.v0idk.mate2026",
+    "appId": "dev.v0idk.mate2026.app",
     "productName": "MATE 2026 Robot Controller",
     "copyright": "Copyright © 2026 Dogukan Koc",
     "mac": {
@@ -106,6 +106,9 @@
       "preload.js",
       "package.json",
       "cameras.json",
+      "build/SpaceMono-Bold.ttf",
+      "build/SpaceMono-Regular.ttf",
+      "build/background.png",
       "native/settings/build/Release/settings.node",
       "native/settings/build/Release/libSettingsUI.dylib",
       "!**/node_modules/**/*",
@@ -115,6 +118,8 @@
     "asarUnpack": [
       "**/*.node",
       "**/*.dylib",
+      "build/SpaceMono-Bold.ttf",
+      "build/SpaceMono-Regular.ttf",
       "app/Resources/**/*",
       "scripts/**/*",
       "web/**/*",

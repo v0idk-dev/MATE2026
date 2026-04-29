@@ -46,18 +46,29 @@ native/                           - native macOS addons
     build.sh                      - builds dylib + .node, fixes rpaths
     build/Release/                - compiled artifacts
 cameras.json                      - camera channel defaults (loaded by Flask + General pane)
+tasks.json                        - task names and descriptions
 main.js                           - Electron app main process
 preload.js                        - bridge between Electron & web content
 package.json                      - app information
-package-lock.json                 - node.js dependencies list
-node_modules/*                    - all node.js dependencies
 build/                            - finished app resources
   icon.icns                       - app icon
+  SpaceMono-Bold.ttf              - bold app font face
+  SpaceMono-Regular.ttf           - regular app font face
 entitlements.mac.plist            - macOS app entitlements
+dmg-bg.sh                         - DMG background creator
+fix-dmg-bg.sh                     - applies background to DMG
 fix-opencv.sh                     - opencv fix script
 build.sh                          - build application
 .gitignore                        - gitignore
 README.md                         - this file
+---------------------------------------  INSTALLED  FILES  --------------------------------------
+node_modules/*                    - all node.js dependencies
+native/settings/node_modules/*    - native addon node.js dependencies
+native/settings/build/release/*   - built addon files
+build/background.png              - DMG background image
+app/Resources/*                   - opencv & python runtime
+scripts/task1_2/build/*           - compiled binaries for task 1.2
+scripts/task1_2/stereo_distance   - compiled stereo distance executable
 -------------------------------------------------------------------------------------------------
 ```
 
@@ -67,24 +78,26 @@ A backup of these files are stored in [/backups](/backups). These files need to 
 
 ```
 build/*
-package.json
-main.js
-preload.js
-fix-opencv.sh
+native/*
 build.sh
+cameras.json
+dmg-bg.sh
 entitlements.mac.plist
-.gitignore
+fix-dmg-bg.sh
+fix-opencv.sh
+main.js
+package.json
+preload.js
 README.md (this file)
+tasks.json
 ```
 
 ## Installing Dependencies
 
 If Homebrew isn't installed, please install that first at [brew.sh](https://brew.sh).
-Firstly, `cd app`.
+
 
 ### Python
-
-Downloads a **python-build-standalone** release — a fully self-contained Python with stdlib included, no Homebrew dependency, no symlinks.
 
 ```bash
 # Download and extract a standalone Python 3.13 (arm64, macOS)
@@ -111,14 +124,8 @@ cp -L /opt/homebrew/opt/opencv/lib/*.dylib app/Resources/opencv-libs/
 Add to `/scripts/task1_2/Makefile`:
 
 ```makefile
-OPENCV_CFLAGS = -I../../app/Resources/opencv-include
-OPENCV_LIBS = -L../../app/Resources/opencv-libs -lopencv_core -lopencv_imgproc -lopencv_calib3d
-
-all: stereo_distance
+all: $(TARGET)
 	@bash ../../fix-opencv.sh
-
-stereo_distance: $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 ```
 
 ### Electron App

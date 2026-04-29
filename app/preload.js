@@ -12,4 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onWindowResizeStart: (cb) => ipcRenderer.on('window-resize-start', cb),
     onWindowResizeEnd: (cb) => ipcRenderer.on('window-resize-end', cb),
     openSettings: () => ipcRenderer.send('open-settings'),
+    openTaskCounter: () => ipcRenderer.send('open-task-counter'),
+    saveTaskSession: (data) => ipcRenderer.send('task-session-save', data),
+    loadTaskSession: () => ipcRenderer.invoke('task-session-load'),
+    resetTaskSession: () => ipcRenderer.send('task-session-reset'),
+    onTaskSessionReset: (cb) => ipcRenderer.on('task-session-reset', () => cb()),
+    onZoomChange: (cb) => ipcRenderer.on('zoom-change', (_, factor) => cb(factor)),
 });

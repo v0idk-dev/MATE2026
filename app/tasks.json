@@ -1,0 +1,197 @@
+{
+  "order": {
+    "D": ["D1", "D2", "D3", "D4", "D5", "D6"],
+    "P": ["P1", "P2", "P3", "P4", "P5", "P6"]
+  },
+  "tasks": [
+    {
+      "id": "D1",
+      "short_name": "Build Vertical Profiling Float",
+      "max_points": 5,
+      "in_pool": false,
+      "description": "Design and construct a vertical profiling float capable of completing depth profiles and transmitting data. Submit a non-ROV device document (DOC-004) detailing float design, buoyancy mechanism, battery, fuse, and data transmission method. Successfully submitting valid documentation and transporting the float to the competition earns 5 pts."
+    },
+    {
+      "id": "D2",
+      "short_name": "Company Spec Sheet",
+      "max_points": 20,
+      "in_pool": false,
+      "description": "Submit a one-page company spec sheet in PDF format by the deadline. Must include team ID, company/school name, home state/country, travel distance, participation history, company photo with roles, grade levels, ROV name, total cost, size and weight, student-hours, safety features, special features, and an ROV photo. Worth up to 20 pts."
+    },
+    {
+      "id": "D3",
+      "short_name": "Technical Documentation",
+      "max_points": 100,
+      "in_pool": false,
+      "description": "Submit a technical document reviewed by a panel of working professionals. Must effectively communicate ROV design rationale, safety systems, engineering decisions (build vs. buy), testing and troubleshooting, and integration of systems. Should include SIDs, photos, and data. Scored up to 100 pts per judge with scores averaged. Due May 21, 2026."
+    },
+    {
+      "id": "D4",
+      "short_name": "Marketing Display",
+      "max_points": 50,
+      "in_pool": false,
+      "description": "Create a printed marketing display (max 36\" × 48\") targeting a non-technical audience. Must promote the ROV and company, connect to the mission theme, address UN SDGs and ESG, and be visually engaging. Digital copy submitted May 21, 2026; physical copy required on-site. Scored by a separate panel of professionals up to 50 pts."
+    },
+    {
+      "id": "D5",
+      "short_name": "Corporate Responsibility",
+      "max_points": 20,
+      "in_pool": false,
+      "description": "Optional bonus section. Earn up to 20 pts for outreach activities in categories: education-focused initiatives (mentoring, STEM presentations), community engagement (events, media coverage), environmental impact (citizen science, cleanups), and knowledge sharing (open-source code, social media, blog posts). For 2026, emphasis is on deep engagement in 2–3 categories rather than breadth across all four."
+    },
+    {
+      "id": "D6",
+      "short_name": "Safety Documentation Submission",
+      "max_points": null,
+      "in_pool": false,
+      "description": "Pre-competition submission of all required safety documentation: electrical SID, fluid power diagram (if used), non-ROV device SID and design doc, company safety review with photos, and JSEA. Must be submitted as searchable PDFs using the correct naming convention and within file size limits. No direct points awarded for submission itself — errors and omissions are penalized in P2 (Initial Safety & Documentation Review score)."
+    },
+    {
+      "id": "P1",
+      "short_name": "Engineering Presentation",
+      "max_points": 100,
+      "in_pool": false,
+      "description": "15-minute in-person oral presentation of the ROV to a panel of working professionals, followed by up to 15 minutes of Q&A. All student members must participate. No slides or PowerPoint allowed; ROV must be present. Up to two 30-second demonstration videos allowed. Scored up to 100 pts per judge. Covers vehicle development, testing, design decisions, and team formation."
+    },
+    {
+      "id": "P2",
+      "short_name": "Initial Safety & Documentation Review",
+      "max_points": 20,
+      "in_pool": false,
+      "description": "Scored review of the safety documentation submitted in D6, conducted by competition officials before the event. Points deducted for missing docs, improper fuse symbols, missing FLA values, page/size violations, or naming convention errors. Companies with violations are notified and must acknowledge, plan a fix, and resubmit if required. Worth up to 20 pts."
+    },
+    {
+      "id": "P3",
+      "short_name": "Onsite Safety Inspection",
+      "max_points": 30,
+      "in_pool": false,
+      "description": "Physical inspection of the ROV system on-site before any water entry. Checks propeller shrouding, fuse placement and type, Anderson Powerpole connectors, strain relief, tether specs, watertight housings, no exposed wiring, no sharp edges, and all relevant specs from the building requirements. Three-strike system: each failed re-inspection costs 10 pts; failure on the third attempt = 0 pts and disqualification from pool events. Worth up to 30 pts."
+    },
+    {
+      "id": "P4",
+      "short_name": "Workmanship Inspection",
+      "max_points": 20,
+      "in_pool": false,
+      "description": "Evaluated concurrently with the onsite safety inspection. Checks overall build quality: secure circuit boards, proper wire labeling, no rat's-nest wiring, no jumper pins in final control box, sufficient strain relief, neat control box layout. Does not block competition participation — only deducts points. -5 pts per issue identified. Worth up to 20 pts."
+    },
+    {
+      "id": "P5",
+      "short_name": "Weight Restrictions",
+      "max_points": 10,
+      "in_pool": false,
+      "description": "ROV weighed in air including all tools and components (excluding tether, float, and removable independent sensors). Under 15 kg earns 10 pts. 15.01–20 kg earns 5 pts. 20.01–25 kg earns 0 pts. Above 25 kg: disqualified from product demonstration. Weighed during onsite safety inspection at World Championship."
+    },
+    {
+      "id": "P6",
+      "short_name": "JSEA Presentation",
+      "max_points": 5,
+      "in_pool": false,
+      "description": "Present the Job Site and Environment Analysis (JSEA) document to the product demonstration station judges prior to setup for each product demonstration attempt. The JSEA must cover deck ops, launch and recovery, power-up, poolside operations, and breakdown. Teams without a JSEA are not permitted to compete in the product demonstration. Worth 5 pts."
+    },
+    {
+      "id": "1.1",
+      "short_name": "Collect Coral Species",
+      "max_points": 30,
+      "in_pool": true,
+      "description": "Collect two basket stars (5 pts each) and two coral species from the coral garden and return them to the surface, side of the pool. Collecting corals by the substrate (end cap/PVC pipe only) earns 10 pts each; collecting them any other way earns 5 pts each. Max 30 pts if all collected correctly by substrate."
+    },
+    {
+      "id": "1.2",
+      "short_name": "Coral Garden Modelling",
+      "max_points": 40,
+      "in_pool": true,
+      "description": "Create a scaled 3D model of the coral garden ridge. Three methods available: (1) Autonomous photogrammetry for up to 40 pts — model must show colored target squares, have a measured and verified length, be properly scaled, and estimate height within 5 cm. (2) Manual CAD model for up to 30 pts — measure length and height within 5 cm each, create a rotatable 3D model in CAD. (3) Manual paper technical drawing for up to 20 pts — measure length and height within 5 cm each, draw three views (front, top, side). Only one method is scored, but teams may attempt multiple simultaneously."
+    },
+    {
+      "id": "1.3",
+      "short_name": "Fly Transect / Maintain Position",
+      "max_points": 15,
+      "in_pool": true,
+      "description": "At regionals: fly a transect over a designated PVC rectangle keeping both blue pipes in frame and neither red pipe visible, traveling from one end to the other. At World Championship: maintain position over a blue square area in a current for 30 consecutive seconds with the full blue square visible and no red pipe visible on screen. Worth 15 pts."
+    },
+    {
+      "id": "2.1",
+      "short_name": "Invasive Species Identification",
+      "max_points": 20,
+      "in_pool": true,
+      "description": "Identify and count European Green Crabs from a laminated image board on the pool floor using the ROV camera. Using a computer vision / image recognition program that auto-detects and counts crabs with bounding boxes earns 15 pts. Manually counting earns 5 pts. After counting, upload the result to the MATE Invasive Species Reporting Form via QR code for an additional 5 pts. Total max: 20 pts."
+    },
+    {
+      "id": "2.2",
+      "short_name": "Iceberg Threat Assessment",
+      "max_points": 35,
+      "in_pool": true,
+      "description": "Survey an iceberg prop at five perimeter points (10 pts for all 5, 5 pts for 1–4), measure its keel depth within 5 cm (10 pts) or within 10 cm (5 pts). Then use the iceberg's provided location, heading, and keel depth to determine red/yellow/green threat levels for all four offshore oil platforms (10 pts for all 4 correct, 5 pts for 3) and their subsea assets (5 pts for all 4 correct). Total max: 35 pts."
+    },
+    {
+      "id": "2.3",
+      "short_name": "Whale-Safe Fishing Gear",
+      "max_points": 20,
+      "in_pool": true,
+      "description": "Simulate acoustic release of a lobster pot retrieval buoy by turning a PVC handle to release the buoy (10 pts). Then recover the lobster pot: lift it off the bottom (5 pts) and return it to the surface, side of the pool (5 pts). The pot cannot be dragged. Total max: 20 pts."
+    },
+    {
+      "id": "2.4",
+      "short_name": "Recover Buoy Anchor",
+      "max_points": 15,
+      "in_pool": true,
+      "description": "Attach a recovery line (team-provided) to a U-bolt on a buoy anchor bucket on the pool floor using a carabiner or equivalent (10 pts). The line must be fully contained before attachment. Return the line to the surface, side of the pool with the mechanism still attached to the U-bolt (5 pts). Total max: 15 pts."
+    },
+    {
+      "id": "2.5",
+      "short_name": "Service Subsea Observatory",
+      "max_points": 45,
+      "in_pool": true,
+      "description": "Recover the old eDNA sensor from the designated yellow-square area to the pool deck (5 pts). Analyze the frequency data provided by the judge to calculate percent frequency seen for 10 species (10 pts). Install a new eDNA sensor completely upright inside the designated area (10 pts) and connect its cable into the observatory's two-port connection (10 pts). Finally, rotate the biofouling-simulating inner plastic sheet three full rotations until the correct judge-specified color shows through the camera window (10 pts). Total max: 45 pts."
+    },
+    {
+      "id": "3.1",
+      "short_name": "Micropile Installation",
+      "max_points": 30,
+      "in_pool": true,
+      "description": "Deploy a bubble curtain device (PEX tubing ring) around the designated micropile location before the pile is installed (10 pts). Guide the micropile from the surface into the 2-inch pipe target using ROV camera guidance and verbal cues to poolside team members — ROV may not touch the micropile before installation (10 pts, -5 pts per ROV contact, max 2). Once installed, have the ROV pull the retaining pin to release the micropile and remove the rope (10 pts). Total max: 30 pts."
+    },
+    {
+      "id": "3.2",
+      "short_name": "Power Platform from Wind Farm",
+      "max_points": 30,
+      "in_pool": true,
+      "description": "Retrieve the power connector from the subsea wind farm platform (5 pts). Lay the connecting cable through a waypoint located near the micropile (10 pts). Remove the protective end cap from the oil platform connection port (5 pts). Insert the power connector into the oil platform port and secure via Velcro connection (10 pts). Total max: 30 pts."
+    },
+    {
+      "id": "4.1",
+      "short_name": "Float Pre-Dive Communication",
+      "max_points": 5,
+      "in_pool": true,
+      "description": "After deploying the float at the surface, the float must wirelessly transmit at least one defined data packet (company number, time, pressure/depth) to the team's shore-side receiver before beginning its first vertical profile. Worth 5 pts."
+    },
+    {
+      "id": "4.2",
+      "short_name": "Float Vertical Profile 1",
+      "max_points": 20,
+      "in_pool": true,
+      "description": "Complete the first vertical profile: descend to 2.5 m (±33 cm) and ascend to 40 cm (±33 cm). Using a buoyancy engine (fluid displacement) earns 10 pts; any other mechanism earns 5 pts. Maintaining 2.5 m depth for 30 consecutive seconds earns 5 pts. Maintaining 40 cm depth for 30 consecutive seconds earns 5 pts. Breaking the surface or contacting ice is a 5-pt penalty. Max: 20 pts (with buoyancy engine, no penalty)."
+    },
+    {
+      "id": "4.3",
+      "short_name": "Float Vertical Profile 2",
+      "max_points": 20,
+      "in_pool": true,
+      "description": "Complete a second vertical profile identical to profile 1: descend to 2.5 m (±33 cm) and ascend to 40 cm (±33 cm). Using a buoyancy engine earns 10 pts; other mechanism earns 5 pts. Holding 2.5 m for 30 s earns 5 pts. Holding 40 cm for 30 s earns 5 pts. Breaking the surface or contacting ice is a 5-pt penalty. Max: 20 pts."
+    },
+    {
+      "id": "4.4",
+      "short_name": "Float Post-Recovery Transmission",
+      "max_points": 10,
+      "in_pool": true,
+      "description": "After the float is recovered to the pool deck, it must wirelessly transmit data packets from both vertical profiles to the shore receiver. Transmitting all data packets (one every 5 seconds for both profiles) earns 10 pts. Transmitting at least one valid data packet from the profiles earns 5 pts. If float fails to transmit, teams may use MATE-provided data instead but forfeit this task's points."
+    },
+    {
+      "id": "4.5",
+      "short_name": "Graph Depth vs Time",
+      "max_points": 10,
+      "in_pool": true,
+      "description": "Use the received data packets to graph depth over time on a computer or device (no hand-drawn graphs). The graph must have time on the X-axis and depth on the Y-axis, and include at least 20 data packets. If the float did not collect 20 packets, teams may use MATE-provided data and still earn 10 pts (but forfeit post-recovery transmission points). Worth 10 pts."
+    }
+  ]
+}
