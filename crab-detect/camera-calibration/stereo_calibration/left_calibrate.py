@@ -8,10 +8,10 @@ import pickle
 # You can modify these variables as needed
 CHESSBOARD_SIZE = (8, 5)  # Number of inner corners per chessboard row and column
 SQUARE_SIZE = 2.0         # Size of a square in centimeters
-CALIBRATION_IMAGES_PATH = 'right_calibration_images/*.jpg'  # Path to calibration images
-OUTPUT_DIRECTORY = 'output'  # Directory to save calibration results
+CALIBRATION_IMAGES_PATH = 'left_calibration_images/*.jpg'  # Path to calibration images
+OUTPUT_DIRECTORY = 'left_output'  # Directory to save calibration results
 SAVE_UNDISTORTED = True   # Whether to save undistorted images
-USE_FISHEYE = False        # Use fisheye distortion model (set False for pinhole)
+USE_FISHEYE = True        # Use fisheye distortion model (set False for pinhole)
 
 def calibrate_camera():
     """
