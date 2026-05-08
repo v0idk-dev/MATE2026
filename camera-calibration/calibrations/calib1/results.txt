@@ -1,0 +1,7 @@
+Stereo RMS reprojection error: 1.061 px
+Baseline (||T||): 15.316 cm
+Translation (T):  [+15.242, +1.256, -0.835] cm
+Rotation magnitude: 6.74°
+
+Avg epipolar error: 2.438 px
+⚠  Epipolar error 2.44 px exceeds gate of 1.0 px.

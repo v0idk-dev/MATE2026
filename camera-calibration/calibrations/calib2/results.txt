@@ -1,0 +1,28 @@
+STEREO CALIBRATION REPORT
+============================================================
+
+Image size           : 640 x 360
+Pairs used           : 74
+Square size          : 2 cm
+
+Stereo RMS error     : 1.7420 px (gate ≤ 1.5 px) FAIL
+Avg epipolar error   : 2.7644 px (gate ≤ 1.0 px) FAIL
+
+Baseline (||T||)     : 15.8887 cm
+Rotation magnitude   : 5.9982 deg
+  (≈ 0° = cameras parallel; >5° usually means the rig is twisted)
+
+Translation T (right cam origin in left cam frame):
+  [-15.8304, -0.5979, -1.2219] cm
+
+Rotation R (3x3):
+  [+0.994526, +0.039227, -0.096847]
+  [-0.039112, +0.999230, +0.003082]
+  [+0.096893, +0.000723, +0.995294]
+
+Next steps:
+  1. Inspect rectified_pair_*.jpg — corresponding points
+     in the left half should sit on the SAME horizontal
+     line as their match in the right half.
+  2. Import stereo_extrinsics.yaml into the MATE app via
+     Settings → Photogrammetry.
