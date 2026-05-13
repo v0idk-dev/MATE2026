@@ -1,2 +1,4 @@
 build
-stereo_distance
+task1_2
+task1_2_kernels.metallib
+*.o

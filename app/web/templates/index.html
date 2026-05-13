@@ -12,7 +12,7 @@
 <div class="titlebar">
     <div class="titlebar-drag"></div>
     <div class="titlebar-content">
-        <span class="titlebar-team">SFS Robotics — MATE 2026</span>
+        <span class="titlebar-team">Fish & Chips — MATE 2026 Robot Controller</span>
         <span class="titlebar-status">
             <span class="status-dot disconnected" id="ws-dot"></span>
             <span id="ws-label">Disconnected</span>
@@ -63,6 +63,20 @@
                     </div>
                 </div>
             </div>
+            <!-- Fullscreen expand button -->
+            <button type="button" class="cam-fullscreen-btn" id="cam-fullscreen-btn" title="Expand camera view">
+                <svg id="cam-fs-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+                    <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+                </svg>
+            </button>
+
+            <!-- Camera restart loading indicator -->
+            <div class="cam-restart-overlay" id="cam-restart-overlay">
+                <div class="cam-restart-spinner"></div>
+                <span class="cam-restart-label">Restarting…</span>
+            </div>
+
             <!-- 2×2 grid: TL TR / BL BR -->
             <div class="cam-grid" id="cam-grid">
                 <div class="cam-slot hidden-slot" id="cam-slot-TL" data-pos="TL">
@@ -307,9 +321,9 @@
     <!-- ══ RIGHT: task panel ══ -->
     <div class="right-panel">
         <div class="task-selector">
-            <button class="task-btn" data-task="1_2"><span class="task-num">1.2</span><span class="task-name">Coral Ridge</span></button>
+            <button class="task-btn" data-task="1_2"><span class="task-num">1.2</span><span class="task-name">Photogrammetry</span></button>
             <button class="task-btn" data-task="2_1"><span class="task-num">2.1</span><span class="task-name">Crab Detection</span></button>
-            <button class="task-btn" data-task="2_2"><span class="task-num">2.2</span><span class="task-name">Iceberg Threat</span></button>
+            <button class="task-btn" data-task="2_2"><span class="task-num">2.2</span><span class="task-name">Threat Detector</span></button>
             <button class="task-btn" data-task="2_5"><span class="task-num">2.5</span><span class="task-name">eDNA Frequency</span></button>
         </div>
         <div class="task-content" id="task-content"></div>

@@ -1,99 +1,84 @@
 #pragma once
+// ─────────────────────────────────────────────────────────────────────────
+// pipe_detector.hpp — find PVC pipe segments in a single rectified image.
+//
+// PVC pipes are bright, edge-rich, mostly straight, and rectilinear. We
+// use:
+//   1. Canny edge detection (with auto-tuned thresholds via Otsu).
+//   2. Probabilistic Hough lines.
+//   3. Merge collinear/overlapping lines (NMS by angle + perpendicular
+//      distance).
+//   4. Discard segments shorter than a minimum length (in pixels).
+//
+// Cross-frame matching for stereo is NOT done here; it lives in
+// pipe_detector.cpp's pairPipesByEpipolarOrder() helper, called from
+// main.cpp after running detect() on both rectified frames.
+//
+// Pipe diameter detection (for the cylinder-fitting / sanity-check pass)
+// is also a future enhancement; step 4 reports endpoint pairs only.
+// ─────────────────────────────────────────────────────────────────────────
 
 #include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
 #include <vector>
-#include <optional>
 
-struct PipeSegment {
-    cv::Point2f start;
-    cv::Point2f end;
-    double length_pixels;
-    double length_real;
-    double angle;
-    double thickness;
-    double confidence;
-    std::vector<cv::Point2f> points;
+namespace mate {
+
+struct PipeDetectorConfig {
+    // Canny low/high are computed via Otsu unless overridden positive.
+    int canny_low_override  = 0;
+    int canny_high_override = 0;
+    // HoughLinesP parameters
+    int hough_threshold = 60;
+    double hough_rho = 1.0;
+    double hough_theta_deg = 1.0;
+    // Minimum line length as a fraction of min(image dimension)
+    double min_length_frac = 0.06;
+    double max_line_gap_px = 12.0;
+    // Merge thresholds: lines whose angles agree within this and whose
+    // perpendicular distances agree within this are fused.
+    double merge_angle_deg = 6.0;
+    double merge_perp_px   = 12.0;
+    // Reject suspiciously diagonal lines? PVC structure is rectilinear
+    // (vertical + horizontal). We don't enforce this in detection because
+    // tilted-camera shots produce diagonals; later wireframe_builder snaps
+    // angles. Setting reject_diagonal_deg to a positive value (e.g. 25)
+    // disables non-rectilinear lines at detection time.
+    double reject_diagonal_deg = 0.0;
 };
 
-struct ReferenceSquare {
-    cv::Rect bounding_box;
-    cv::RotatedRect rotated_rect;
-    std::vector<cv::Point> contour;
-    cv::Point2f centroid;
-    double area;
-    double side_length_pixels;
-    double confidence;
-    cv::Scalar mean_color_bgr;
-    std::string color_name;
-};
-
-struct ScaleInfo {
-    double pixels_per_cm;
-    double cm_per_pixel;
-    int num_references;
-    double scale_confidence;
+struct PipeSegment2D {
+    cv::Point2f p0;
+    cv::Point2f p1;
+    double angle_deg = 0.0;       // [-90, 90]
+    double length_px = 0.0;
+    int    id        = -1;        // optional per-detector unique tag
 };
 
 class PipeDetector {
 public:
-    PipeDetector();
+    explicit PipeDetector(const PipeDetectorConfig& cfg = {}) : cfg_(cfg) {}
 
-    void set_canny_thresholds(double low, double high);
-    void set_hough_params(double rho, double theta_deg, int threshold,
-                          double min_line_length, double max_line_gap);
-    void set_min_pipe_length_pixels(double len);
-    void set_pipe_merge_angle_threshold(double degrees);
-    void set_pipe_merge_distance_threshold(double pixels);
+    void setConfig(const PipeDetectorConfig& cfg) { cfg_ = cfg; }
+    const PipeDetectorConfig& config() const { return cfg_; }
 
-    std::vector<PipeSegment> detect(const cv::Mat& image) const;
+    std::vector<PipeSegment2D> detect(const cv::Mat& bgr) const;
 
-    cv::Mat visualize(const cv::Mat& image,
-                      const std::vector<PipeSegment>& pipes,
-                      const ScaleInfo& scale) const;
+    // Annotate (clones bgr).
+    cv::Mat visualize(const cv::Mat& bgr,
+                      const std::vector<PipeSegment2D>& segs) const;
 
 private:
-    double canny_low_;
-    double canny_high_;
-    double hough_rho_;
-    double hough_theta_deg_;
-    int hough_threshold_;
-    double hough_min_line_length_;
-    double hough_max_line_gap_;
-    double min_pipe_length_pixels_;
-    double merge_angle_threshold_;
-    double merge_distance_threshold_;
-
-    std::vector<PipeSegment> merge_collinear_segments(
-        const std::vector<PipeSegment>& segments) const;
-
-    bool are_collinear(const PipeSegment& a, const PipeSegment& b) const;
-
-    double point_to_line_distance(const cv::Point2f& pt,
-                                   const cv::Point2f& line_start,
-                                   const cv::Point2f& line_end) const;
+    PipeDetectorConfig cfg_;
 };
 
-class ReferenceSquareDetector {
-public:
-    ReferenceSquareDetector();
+// After detecting pipes in left and right RECTIFIED frames, pair them by
+// y-coordinate proximity (since rectified pairs share epipolar y) and
+// orientation similarity. Returns parallel index pairs (left_index,
+// right_index). Unmatched pipes are dropped.
+std::vector<std::pair<int, int>>
+pairPipesByEpipolarOrder(const std::vector<PipeSegment2D>& L,
+                         const std::vector<PipeSegment2D>& R,
+                         double max_y_diff_px = 18.0,
+                         double max_angle_diff_deg = 8.0);
 
-    void set_known_side_cm(double side_cm);
-    void set_min_area(double area);
-    void set_max_area(double area);
-
-    std::vector<ReferenceSquare> detect(const cv::Mat& image) const;
-
-    ScaleInfo compute_scale(const std::vector<ReferenceSquare>& squares) const;
-
-    cv::Mat visualize(const cv::Mat& image,
-                      const std::vector<ReferenceSquare>& squares) const;
-
-private:
-    double known_side_cm_;
-    double min_area_;
-    double max_area_;
-
-    std::string classify_color(const cv::Scalar& bgr) const;
-    double compute_squareness(const std::vector<cv::Point>& contour) const;
-};
+}  // namespace mate

@@ -1,8 +1,8 @@
 {
   "name": "mate-2026-robot-controller",
-  "version": "0.2.0",
-  "buildNumber": 62,
-  "description": "MATE 2026 ROV Control System for SFS Robotics",
+  "version": "0.3.0",
+  "buildNumber": 66,
+  "description": "MATE 2026 ROV Control System for Fish & Chips Technologies",
   "author": "Dogukan Koc",
   "main": "main.js",
   "scripts": {

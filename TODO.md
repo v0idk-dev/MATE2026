@@ -35,9 +35,10 @@
   * [ ] Auto-connect
 * [X] Connect to cameras
   * [X] Fix camera behaviour when 1 top and 1 bottom camera is selected on opposite sides
-  * [ ] Fix usb video and macos webcam switching
+  * [X] Fix usb video and macos webcam switching
+    *Added reload for camera feed as an alternate solution*
   * [X] Add screenshot buttons for tasks
-* [ ] Implement new photogrammetry
+* [X] Implement new photogrammetry
 * [X] App internals fixes:
   * [X] Transition to "production WSGI server"
   * [X] Add server start detection to eliminate false starts that require a reload
@@ -52,9 +53,9 @@
 
 # Photogrammetry
 
-* [ ] Get manual measurement working
-* [ ] Get AI-fallback real photogrammetry working
-* [ ] Reimplement new methods w/ method switcher
+* [X] Get manual measurement working
+* [X] Get AI-fallback real photogrammetry working
+* [X] Reimplement new methods w/ method switcher
 
 # Crab Detect
 
@@ -62,5 +63,5 @@
 * [X] Export correctly
 * [X] Train AI model
 * [X] Test and package the model
-* [ ] Gather expanded data
+* [X] Gather expanded data
 * [ ] Train on expanded data

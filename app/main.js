@@ -1,8 +1,9 @@
 const { app, BrowserWindow, Menu, ipcMain, nativeImage, nativeTheme } = require('electron');
 const { spawn, spawnSync, exec }  = require('child_process');
-const http = require('http');
-const path = require('path');
-const fs   = require('fs');
+const http  = require('http');
+const https = require('https');
+const path  = require('path');
+const fs    = require('fs');
 
 const _pkg = (() => {
     try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')); }
@@ -402,6 +403,7 @@ function setSimFlag(key, val) {
 const _ICON_NAMES = {
     gear:     'gear',
     reload:   'arrow.clockwise',
+    restart:  'restart',
     devtools: 'wrench.and.screwdriver',
     devoff:   'xmark',
     zoomIn:   'plus.magnifyingglass',
@@ -453,6 +455,31 @@ function buildMenu() {
             },
         },
     ];
+
+    debugItems.push({ type: 'separator' });
+    debugItems.push({
+        label: 'Restart Camera Feed',
+        accelerator: 'CmdOrCtrl+Shift+R',
+        icon: _menuIcon('restart'),
+        click: () => {
+            if (mainWindow) mainWindow.webContents.send('camera-restarting');
+            if (flaskProcess) { try { flaskProcess.kill(); } catch {} flaskProcess = null; }
+            startFlaskServer();
+            // Poll until Flask responds, then notify renderer
+            const deadline = Date.now() + 20000;
+            function poll() {
+                if (Date.now() > deadline) return;
+                const r = spawnSync('/usr/bin/curl', ['-s', '-o', '/dev/null', '-w', '%{http_code}', '--max-time', '1', 'http://127.0.0.1:5001/'], { encoding: 'utf8' });
+                const code = (r.stdout || '').trim();
+                if (code && code !== '000') {
+                    if (mainWindow) mainWindow.webContents.send('camera-ready');
+                } else {
+                    setTimeout(poll, 400);
+                }
+            }
+            setTimeout(poll, 600);
+        },
+    });
 
     if (_devMode) {
         debugItems.push({ type: 'separator' });
@@ -701,20 +728,142 @@ app.whenReady().then(() => {
         catch { return '[]'; }
     });
 
-    // Tiny internal API server on 5002 so Flask can call listCameras via the addon.
+    // ── AI proxy helpers ──────────────────────────────────────────────
+    // Forward a request to a cloud AI provider. Provider's API key is
+    // pulled from the macOS Keychain via the native addon — keys never
+    // leave the main process. Apple Intelligence is dispatched in step 9.
+    function aiCall(provider, model, body, cb) {
+        const addon = loadSettingsAddon();
+        if (!addon || !addon.aiKeyGet) return cb(new Error('addon-unavailable'));
+        let key = null;
+        if (provider !== 'apple') {
+            try { key = addon.aiKeyGet(provider); } catch { key = null; }
+            if (!key) return cb(new Error('no-key-for-' + provider));
+        }
+        let host, p, headers;
+        if (provider === 'openai') {
+            host = 'api.openai.com';
+            p = '/v1/chat/completions';
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + key,
+            };
+        } else if (provider === 'anthropic') {
+            host = 'api.anthropic.com';
+            p = '/v1/messages';
+            headers = {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+            };
+        } else if (provider === 'google') {
+            host = 'generativelanguage.googleapis.com';
+            p = `/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+            headers = { 'Content-Type': 'application/json' };
+        } else if (provider === 'apple') {
+            const addon = loadSettingsAddon();
+            if (!addon || !addon.appleIntelligenceGenerate)
+                return cb(new Error('apple-addon-missing'));
+            const prompt = (body && body.messages)
+                ? body.messages.map(m => {
+                    if (typeof m.content === 'string') return m.content;
+                    if (Array.isArray(m.content)) return m.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+                    return '';
+                  }).join('\n')
+                : (body && body.prompt) ? body.prompt : JSON.stringify(body || {});
+            // Run in a worker thread so the main-thread event loop stays live
+            const { Worker, isMainThread, workerData, parentPort } = require('worker_threads');
+            const workerSrc = `
+                const { workerData, parentPort } = require('worker_threads');
+                const addon = require(workerData.addonPath);
+                try {
+                    const out = addon.appleIntelligenceGenerate(workerData.prompt);
+                    parentPort.postMessage({ ok: true, out });
+                } catch(e) {
+                    parentPort.postMessage({ ok: false, err: String(e.message || e) });
+                }
+            `;
+            let addonPath;
+            try { addonPath = require.resolve('./native/settings/build/Release/settings.node'); }
+            catch { try { addonPath = require.resolve('./native/settings/build/Debug/settings.node'); } catch { return cb(new Error('apple-addon-path-unknown')); } }
+            const w = new Worker(workerSrc, { eval: true, workerData: { addonPath, prompt } });
+            w.once('message', msg => {
+                if (msg.ok) cb(null, { status: 200, body: msg.out });
+                else cb(new Error(msg.err));
+            });
+            w.once('error', e => cb(e));
+            return;
+        } else {
+            return cb(new Error('unknown-provider-' + provider));
+        }
+        const payload = Buffer.from(JSON.stringify(body || {}));
+        const req = https.request({
+            host, port: 443, path: p, method: 'POST', headers: {
+                ...headers, 'Content-Length': payload.length,
+            },
+        }, resp => {
+            let chunks = [];
+            resp.on('data', d => chunks.push(d));
+            resp.on('end', () => {
+                cb(null, {
+                    status: resp.statusCode,
+                    body: Buffer.concat(chunks).toString('utf8'),
+                });
+            });
+        });
+        req.on('error', e => cb(e));
+        req.setTimeout(120000, () => { try { req.destroy(new Error('timeout')); } catch {} });
+        req.write(payload);
+        req.end();
+    }
+
+    // Tiny internal API server on 5002 so Flask can call native-only
+    // facilities: camera enumeration, AI provider status, AI proxy.
     http.createServer((req, res) => {
+        const send = (code, ctype, payload) => {
+            res.writeHead(code, { 'Content-Type': ctype });
+            res.end(payload);
+        };
         if (req.method === 'GET' && req.url === '/cameras') {
             const addon = loadSettingsAddon();
             let json = '[]';
             if (addon && addon.listCameras) {
                 try { json = addon.listCameras(); } catch {}
             }
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(json);
-        } else {
-            res.writeHead(404);
-            res.end();
+            return send(200, 'application/json', json);
         }
+        if (req.method === 'GET' && req.url === '/ai_providers') {
+            const addon = loadSettingsAddon();
+            let json = '{}';
+            if (addon && addon.aiProvidersJson) {
+                try { json = addon.aiProvidersJson(); } catch {}
+            }
+            return send(200, 'application/json', json);
+        }
+        if (req.method === 'POST' && req.url === '/ai_call') {
+            let raw = '';
+            req.on('data', d => { raw += d; if (raw.length > 32 * 1024 * 1024) req.destroy(); });
+            req.on('end', () => {
+                let parsed;
+                try { parsed = JSON.parse(raw || '{}'); }
+                catch { return send(400, 'application/json', '{"error":"bad-json"}'); }
+                const { provider, model, body } = parsed;
+                if (!provider || !model) {
+                    return send(400, 'application/json',
+                        '{"error":"missing-provider-or-model"}');
+                }
+                aiCall(provider, model, body, (err, out) => {
+                    if (err) {
+                        return send(502, 'application/json',
+                            JSON.stringify({ error: String(err.message || err) }));
+                    }
+                    send(out.status || 200, 'application/json', out.body || '{}');
+                });
+            });
+            return;
+        }
+        res.writeHead(404);
+        res.end();
     }).listen(5002, '127.0.0.1');
 
     app.setAboutPanelOptions({

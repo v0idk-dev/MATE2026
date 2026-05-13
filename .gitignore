@@ -26,6 +26,7 @@ coverage/
 *.seed
 *.pid.lock
 *.tgz
+*.pyc
 *.DS_Store
 *.AppleDouble
 *.LSOverride

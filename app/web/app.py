@@ -282,12 +282,19 @@ def api_settings_camera_slots():
 @app.route('/api/settings/photo', methods=['GET', 'POST'])
 def api_settings_photo():
     s = _settings_read()
-    defaults = {'focal': '35.0', 'sensorW': '36.0', 'baseline': '0.1', 'plateW': '0.3', 'plateH': '0.2'}
+    # Base defaults — all keys the Swift PhotoDefaults struct can write.
+    defaults = {
+        'focal': '35.0', 'sensorW': '36.0', 'baseline': '0.1',
+        'plateW': '0.10', 'plateH': '0.10',
+        'plateColorR': 128.0, 'plateColorG': 0.0, 'plateColorB': 255.0,
+        'plateColorTol': 25.0, 'underwater': False,
+        'expectedPlateCount': 8, 'defaultAIModel': '',
+    }
     photo = {**defaults, **s.get('photo', {})}
     if request.method == 'GET':
         return jsonify(photo)
     data = request.get_json(force=True)
-    merged = {**photo, **{k: str(v) for k, v in data.items() if k in defaults}}
+    merged = {**photo, **{k: v for k, v in data.items() if k in defaults}}
     _write_settings_key('photo', merged)
     return jsonify({'ok': True})
 
@@ -410,106 +417,311 @@ def api_undistort_select():
         return jsonify({'error': str(e)}), 500
     return jsonify({'ok': True, 'active': _undistort_id})
 
-def parse_plate_output(text):
-    result = {
-        'raw_output': text,
-        'mode': 'plates',
-        'config': {},
-        'detections': [],
-        'stereo': {},
-        'plate_distances': [],
+# ── Task 1.2 photogrammetry helpers ──────────────────────────────────────────
+#
+# Pipeline overview:
+#   1. Caller hits /api/task1_2/analyze with two images, plate-color HSV,
+#      mode ("stereo" for now; ai modes route via :5002 in step 9), and
+#      optional overrides.
+#   2. We resolve the active calibration files from settings.json (left
+#      pkl id, right pkl id, active stereo extrinsics yaml id).
+#   3. We convert each pkl to YAML on demand (cached on disk so we don't
+#      repeat work). The C++ binary reads only YAML.
+#   4. We invoke scripts/task1_2/stereo_distance with --mode stereo and the
+#      resolved paths. The binary emits ONE JSON document on stdout.
+#   5. We parse it, attach base64 debug images from --debug-dir, return.
+#
+# Nothing is persisted between runs (per spec). All temp dirs cleaned up.
+
+_PKL_YAML_CACHE_DIR = os.path.join(_APP_SUPPORT_DIR, 'undistort_yaml')
+os.makedirs(_PKL_YAML_CACHE_DIR, exist_ok=True)
+_STEREO_EXTRINSICS_DIR = os.path.join(_APP_SUPPORT_DIR, 'stereo_extrinsics')
+os.makedirs(_STEREO_EXTRINSICS_DIR, exist_ok=True)
+
+_TASK1_2_PYTHON = os.path.join(
+    PROJECT_ROOT, 'app', 'Resources', 'python-runtime', 'bin', 'python3')
+_PKL_TO_YAML = os.path.join(
+    PROJECT_ROOT, 'scripts', 'task1_2', 'python', 'pkl_to_yaml.py')
+
+
+def _pkl_to_yaml_cached(pkl_id: str, image_w: int = 0, image_h: int = 0) -> str:
+    """Convert ~/Library/.../undistort/<pkl_id>.pkl to a YAML the C++ binary
+    can read. Cached on disk; regenerates if the pkl is newer than the YAML
+    or the image dimensions changed."""
+    pkl_path  = os.path.join(_UNDISTORT_DIR, pkl_id + '.pkl')
+    if not os.path.exists(pkl_path):
+        raise FileNotFoundError(f'pkl not found: {pkl_path}')
+    # Cache key includes the requested dimensions because pkl_to_yaml.py
+    # writes them into the YAML and the rectifier reads them.
+    yaml_name = f'{pkl_id}_{image_w}x{image_h}.yaml' if (image_w and image_h) \
+                else f'{pkl_id}.yaml'
+    yaml_path = os.path.join(_PKL_YAML_CACHE_DIR, yaml_name)
+    if (os.path.exists(yaml_path)
+            and os.path.getmtime(yaml_path) >= os.path.getmtime(pkl_path)):
+        return yaml_path
+    cmd = [_TASK1_2_PYTHON, _PKL_TO_YAML, pkl_path, yaml_path]
+    if image_w: cmd += ['--width',  str(image_w)]
+    if image_h: cmd += ['--height', str(image_h)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f'pkl_to_yaml.py failed: {proc.stderr.strip() or proc.stdout.strip()}')
+    return yaml_path
+
+
+def _resolve_calibration_paths():
+    """Read settings.json and return the absolute paths of the configured
+    left calibration pkl, right calibration pkl, and active stereo extrinsics
+    yaml. Any missing entry is returned as None — the caller decides whether
+    to error out or proceed."""
+    s = _settings_read()
+    left_id   = s.get('photogrammetryLeftCalibId')
+    right_id  = s.get('photogrammetryRightCalibId')
+    stereo_id = s.get('activeStereoExtrinsicsId')
+    paths = {
+        'left_pkl':  os.path.join(_UNDISTORT_DIR, left_id  + '.pkl') if left_id  else None,
+        'right_pkl': os.path.join(_UNDISTORT_DIR, right_id + '.pkl') if right_id else None,
+        'stereo_yaml': os.path.join(_STEREO_EXTRINSICS_DIR, stereo_id + '.yaml')
+                       if stereo_id else None,
+        'left_id':  left_id,
+        'right_id': right_id,
+        'stereo_id': stereo_id,
     }
+    for k in ('left_pkl', 'right_pkl', 'stereo_yaml'):
+        p = paths[k]
+        if p and not os.path.exists(p):
+            paths[k] = None
+    return paths
 
-    focal_m = re.search(r'Focal length:\s+([\d.]+)\s+mm', text)
-    if focal_m:
-        result['config']['focal_length_mm'] = float(focal_m.group(1))
 
-    baseline_m = re.search(r'Baseline:\s+([\d.]+)\s+m', text)
-    if baseline_m:
-        result['config']['baseline_m'] = float(baseline_m.group(1))
+def _file_to_data_url(path):
+    """Read a local image file and return a base64 data URL."""
+    ext = os.path.splitext(path)[1].lstrip('.').lower()
+    mime = 'image/png' if ext == 'png' else 'image/jpeg'
+    with open(path, 'rb') as f:
+        return f'data:{mime};base64,{base64.b64encode(f.read()).decode()}'
 
-    for m in re.finditer(r'Plate #(\d+):\s*\n\s*Centroid:\s*\(([\d.]+),\s*([\d.]+)\)\s*\n\s*Bounding Box:\s*\[([^\]]+)\]\s*\n\s*Rotated Rect:\s*([\d.]+)\s*x\s*([\d.]+)\s*@\s*([\d.]+)\s*deg\s*\n\s*Area:\s*([\d.]+)\s*px\^2\s*\n\s*Confidence:\s*([\d.]+)%', text):
-        result['detections'].append({
-            'id': int(m.group(1)),
-            'centroid': [float(m.group(2)), float(m.group(3))],
-            'confidence': float(m.group(9))
-        })
 
-    rot_m = re.search(r'Rotation angle:\s+([\d.]+)\s+degrees', text)
-    if rot_m:
-        result['stereo']['rotation_angle'] = float(rot_m.group(1))
+# NOTE: `_scale_scene_in_place` was removed during the May 2026 overhaul.
+# Manual scale override is now served by the new task1_2 blueprint at
+# POST /api/task1_2/manual_width (see web/task1_2.py).
 
-    reproj_m = re.search(r'Reprojection error:\s+([\d.]+)\s+px', text)
-    if reproj_m:
-        result['stereo']['reprojection_error'] = float(reproj_m.group(1))
 
-    for m in re.finditer(r'Plate #(\d+):\s+([\d.]+)\s+in\s+\(([\d.]+)\s+m\)', text):
-        result['plate_distances'].append({
-            'plate_id': int(m.group(1)),
-            'distance_inches': float(m.group(2)),
-            'distance_meters': float(m.group(3))
-        })
+@app.route('/api/task1_2/calibrations')
+def api_task1_2_calibrations():
+    """Report the calibration files available + which roles are assigned.
+    The frontend uses this to render its calibration QC banner."""
+    s = _settings_read()
+    pkls = s.get('undistortModels', []) or []
+    extrinsics = s.get('stereoExtrinsicsFiles', []) or []
+    return jsonify({
+        'pkls': pkls,
+        'stereo_extrinsics': extrinsics,
+        'photogrammetryLeftCalibId':   s.get('photogrammetryLeftCalibId'),
+        'photogrammetryRightCalibId':  s.get('photogrammetryRightCalibId'),
+        'activeStereoExtrinsicsId':    s.get('activeStereoExtrinsicsId'),
+    })
 
-    for m in re.finditer(r'Plate #(\d+):\s+UNABLE TO DETERMINE', text):
-        result['plate_distances'].append({
-            'plate_id': int(m.group(1)),
-            'distance_inches': None,
-            'distance_meters': None
-        })
 
-    return result
+@app.route('/api/task1_2/ai_providers')
+def api_task1_2_ai_providers():
+    """Proxy to the Electron main process's :5002 endpoint."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(
+                'http://127.0.0.1:5002/ai_providers', timeout=3) as r:
+            return Response(r.read(), mimetype='application/json')
+    except Exception as e:
+        return jsonify({'openai': False, 'anthropic': False, 'google': False,
+                        'appleIntelligence': False,
+                        'error': str(e)}), 200
 
-def parse_pipe_output(text):
-    result = {
-        'raw_output': text,
-        'mode': 'pipes',
-        'scale': {},
-        'ref_squares': [],
-        'pipe_lengths': [],
-    }
 
-    ppc_m = re.search(r'Pixels per cm:\s+([\d.]+)', text)
-    if ppc_m:
-        result['scale']['pixels_per_cm'] = float(ppc_m.group(1))
+@app.route('/api/task1_2/enhance', methods=['POST'])
+def api_task1_2_enhance():
+    import urllib.request, urllib.error, json as _json, sys
+    data = request.get_json(force=True, silent=True) or {}
+    provider = data.get('provider', '')
+    model_id  = data.get('model', '')
+    if not provider or not model_id:
+        return jsonify({'error': 'provider and model required'}), 400
 
-    cpp_m = re.search(r'Cm per pixel:\s+([\d.]+)', text)
-    if cpp_m:
-        result['scale']['cm_per_pixel'] = float(cpp_m.group(1))
+    current_model = data.get('model_json') or {}
+    images_b64    = data.get('images', [])
 
-    refs_m = re.search(r'References used:\s+(\d+)', text)
-    if refs_m:
-        result['scale']['references_used'] = int(refs_m.group(1))
+    # Compact current section sizes for the prompt
+    sections = current_model.get('sections', [])
+    cur_sizes = [[round(s['size'][0],3), round(s['size'][2],3)] for s in sections if s.get('size')]
+    cur_json = _json.dumps(cur_sizes, separators=(',', ':'))
 
-    conf_m = re.search(r'Scale confidence:\s+(\d+)%', text)
-    if conf_m:
-        result['scale']['confidence'] = int(conf_m.group(1))
+    # ── Shared prompt text ─────────────────────────────────────────────────────
+    prompt = (
+        "You are a photogrammetry measurement expert. Analyze the stereo camera images of a "
+        "PVC pipe coral-garden structure and correct the 3D reconstruction measurements.\n\n"
+        "The structure has 3 sections: left, middle, right. Each section has a fixed depth of "
+        "0.36 m. You must estimate the WIDTH (horizontal span) and HEIGHT (vertical span) of "
+        "each section in metres by examining the images carefully.\n\n"
+        "Current algorithm estimates (may be wrong): " + cur_json + "\n"
+        "Format: [[left_width, left_height], [mid_width, mid_height], [right_width, right_height]]\n\n"
+        "Study the images. The PVC pipes are white/grey. Use the 10 cm square coloured plates "
+        "visible in the images as scale references — each plate is exactly 0.10 m × 0.10 m.\n\n"
+        "You MUST output corrected values. Do not return the same numbers unless you are certain "
+        "they are correct. Be precise to 3 decimal places.\n\n"
+        "Respond with ONLY a raw JSON array — no markdown, no text, no explanation:\n"
+        "[[Lx,Hz],[Lx,Hz],[Lx,Hz]]"
+    )
 
-    for m in re.finditer(r'Square #(\d+):\s+(\w+)\s+\|\s+side=(\d+)\s+px\s+\|\s+conf=(\d+)%', text):
-        result['ref_squares'].append({
-            'id': int(m.group(1)),
-            'color': m.group(2),
-            'side_px': int(m.group(3)),
-            'confidence': int(m.group(4))
-        })
+    # ── Build provider body ────────────────────────────────────────────────────
+    def parse_image(img):
+        url = img.get('data_url', '')
+        if not url.startswith('data:') or ';base64,' not in url:
+            return None
+        head, b64 = url.split(';base64,', 1)
+        return head.replace('data:', ''), b64
 
-    for m in re.finditer(r'Pipe #(\d+):\s+([\d.]+)\s+cm\s+\(([\d.]+)\s+in\)', text):
-        if int(m.group(1)) not in [p['pipe_id'] for p in result['pipe_lengths']]:
-            result['pipe_lengths'].append({
-                'pipe_id': int(m.group(1)),
-                'length_cm': float(m.group(2)),
-                'length_inches': float(m.group(3))
-            })
+    if provider == 'anthropic':
+        content = []
+        for img in images_b64[:6]:
+            p = parse_image(img)
+            if p:
+                content.append({'type': 'image', 'source': {
+                    'type': 'base64', 'media_type': p[0], 'data': p[1]}})
+        content.append({'type': 'text', 'text': prompt})
+        body = {'model': model_id, 'max_tokens': 1024,
+                'messages': [{'role': 'user', 'content': content}]}
 
-    for m in re.finditer(r'Pipe #(\d+):\s+(\d+)\s+px\s*$', text, re.MULTILINE):
-        if int(m.group(1)) not in [p['pipe_id'] for p in result['pipe_lengths']]:
-            result['pipe_lengths'].append({
-                'pipe_id': int(m.group(1)),
-                'length_px': int(m.group(2)),
-                'length_cm': None,
-                'length_inches': None
-            })
+    elif provider == 'google':
+        parts = []
+        for img in images_b64[:6]:
+            p = parse_image(img)
+            if p:
+                parts.append({'inline_data': {'mime_type': p[0], 'data': p[1]}})
+        parts.append({'text': prompt})
+        body = {'contents': [{'role': 'user', 'parts': parts}],
+                'generationConfig': {'maxOutputTokens': 1024}}
 
-    return result
+    elif provider == 'apple':
+        # Pass prompt + images as a JSON payload; Swift side uses Vision to describe images.
+        apple_imgs = []
+        for img in images_b64[:4]:
+            p = parse_image(img)
+            if p:
+                apple_imgs.append({'mime': p[0], 'b64': p[1]})
+        body = {'messages': [{'role': 'user', 'content': _json.dumps(
+            {'prompt': prompt, 'images': apple_imgs}, separators=(',', ':')
+        )}]}
+
+    else:
+        # OpenAI
+        content = []
+        for img in images_b64[:6]:
+            p = parse_image(img)
+            if p:
+                content.append({'type': 'image_url',
+                                 'image_url': {'url': img['data_url']}})
+        content.append({'type': 'text', 'text': prompt})
+        body = {'model': model_id, 'max_tokens': 1024,
+                'messages': [{'role': 'user', 'content': content}]}
+
+    # ── Call :5002 ─────────────────────────────────────────────────────────────
+    payload = _json.dumps({'provider': provider, 'model': model_id, 'body': body}).encode()
+    print(f'[enhance] {provider}/{model_id} payload={len(payload)}b', file=sys.stderr, flush=True)
+    try:
+        req = urllib.request.Request(
+            'http://127.0.0.1:5002/ai_call', data=payload,
+            headers={'Content-Type': 'application/json'}, method='POST')
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                raw = r.read()
+        except urllib.error.HTTPError as he:
+            raw = he.read()
+            print(f'[enhance] HTTPError {he.code} body: {raw[:500]}', file=sys.stderr, flush=True)
+        print(f'[enhance] response first 300: {raw[:300]}', file=sys.stderr, flush=True)
+        ai_resp = _json.loads(raw)
+    except Exception as e:
+        return jsonify({'error': f'AI call failed: {str(e)}'}), 502
+
+    # Surface provider-level errors (error key present, no response key)
+    if isinstance(ai_resp, dict) and 'error' in ai_resp and not any(
+            k in ai_resp for k in ('content', 'choices', 'candidates', 'text')):
+        err = ai_resp['error']
+        if isinstance(err, dict):
+            err = err.get('message') or err.get('status') or str(err)
+        return jsonify({'error': f'AI error: {err}'}), 502
+
+    # ── Extract text ───────────────────────────────────────────────────────────
+    try:
+        if provider == 'anthropic':
+            text = ai_resp['content'][0]['text']
+        elif provider == 'google':
+            text = ai_resp['candidates'][0]['content']['parts'][0]['text']
+        elif provider == 'apple':
+            text = ai_resp['text']
+        else:
+            c = ai_resp['choices'][0]['message']['content']
+            text = c if isinstance(c, str) else c[0].get('text', '')
+    except (KeyError, IndexError, TypeError) as e:
+        return jsonify({'error': f'Unexpected response shape: {str(e)}',
+                        'raw': ai_resp}), 502
+
+    # ── Parse the [[Lx,Hz],[Lx,Hz],[Lx,Hz]] array the model returned ─────────
+    clean = text.strip()
+    if clean.startswith('```'):
+        clean = clean.split('\n', 1)[1].rsplit('```', 1)[0].strip()
+    # Grab the first JSON array if model prepended text
+    if not clean.startswith('['):
+        m = re.search(r'\[.*\]', clean, re.DOTALL)
+        if m:
+            clean = m.group(0)
+    try:
+        sizes = _json.loads(clean)
+        if not isinstance(sizes, list) or len(sizes) != 3:
+            raise ValueError(f'expected 3-element array, got {type(sizes).__name__} len={len(sizes) if isinstance(sizes, list) else "?"}')
+        for pair in sizes:
+            if not isinstance(pair, list) or len(pair) != 2:
+                raise ValueError(f'each element must be [Lx, Hz], got {pair!r}')
+    except Exception as e:
+        return jsonify({'error': f'Model returned unexpected format: {str(e)}',
+                        'raw_text': text}), 502
+
+    return jsonify({'sizes': sizes})
+
+
+# In-memory store of recently-completed runs so /scale_override can rescale
+# without re-running C++. Keyed by a short token returned with /analyze. TTL
+# is implicit: clobbered on next analyze, never persisted.
+_recent_runs = {}
+_recent_runs_lock = threading.Lock()
+
+
+def _store_recent_run(scene: dict) -> str:
+    import secrets
+    token = secrets.token_urlsafe(12)
+    with _recent_runs_lock:
+        # Keep only the last few runs in memory to bound footprint.
+        if len(_recent_runs) > 8:
+            _recent_runs.clear()
+        _recent_runs[token] = scene
+    return token
+
+
+def _get_recent_run(token: str):
+    with _recent_runs_lock:
+        return _recent_runs.get(token)
+
+
+# ─── REMOVED in May 2026 overhaul ──────────────────────────────────────
+# The legacy in-app routes
+#     POST /api/task1_2/analyze          (used field names left_image/right_image)
+#     POST /api/task1_2/scale_override
+# have been deleted from this file. Both URLs are now served by the new
+# `task1_2_bp` blueprint (see web/task1_2.py), which expects the modern
+# multipart field names `lefts[]` / `rights[]` and exposes
+# /api/task1_2/manual_width as the manual-scale entry point.
+# Helpers above (_resolve_calibration_paths, _pkl_to_yaml_cached,
+# _file_to_data_url, _store_recent_run, _get_recent_run) are kept because
+# task1_2_modes.py (video / hybrid_ai / ai_only modes) still uses them.
+
 
 
 @app.route('/')
@@ -832,151 +1044,19 @@ def crab_detect():
             pass
  
 
-@app.route('/api/analyze', methods=['POST'])
-def analyze():
-    mode = request.form.get('mode', 'plates')
+# Old /api/analyze and the in-app /api/task1_2/analyze + /scale_override
+# have been removed. /api/task1_2/* is now served by the task1_2_bp
+# blueprint registered just below.
 
-    def file_to_data_url(path):
-        ext = os.path.splitext(path)[1].lstrip('.').lower()
-        mime = 'image/png' if ext == 'png' else 'image/jpeg'
-        with open(path, 'rb') as f:
-            return f'data:{mime};base64,{base64.b64encode(f.read()).decode()}'
-
-    if mode == 'pipes':
-        if 'image' not in request.files:
-            return jsonify({'error': 'Please upload an image'}), 400
-
-        img_file = request.files['image']
-        if not img_file.filename:
-            return jsonify({'error': 'Please select an image file'}), 400
-
-        if not allowed_file(img_file.filename):
-            return jsonify({'error': 'Unsupported file format. Use JPG, PNG, BMP, or TIFF.'}), 400
-
-        img_ext = img_file.filename.rsplit('.', 1)[1].lower()
-
-        tmp_img = tempfile.NamedTemporaryFile(delete=False, suffix=f'.{img_ext}')
-        tmp_out = tempfile.mkdtemp()
-        try:
-            img_file.save(tmp_img.name)
-            tmp_img.close()
-
-            ref_side = request.form.get('ref_square_side', '10.0')
-            cmd = [
-                BINARY_PATH,
-                '--mode', 'pipes',
-                tmp_img.name,
-                '--ref-square-side', str(ref_side),
-                '--save-debug',
-                '--output', tmp_out
-            ]
-
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            output_text = proc.stdout + proc.stderr
-            parsed = parse_pipe_output(output_text)
-
-            debug_images = {}
-            for f in sorted(os.listdir(tmp_out)):
-                if f.endswith(('.png', '.jpg')):
-                    debug_images[f] = file_to_data_url(os.path.join(tmp_out, f))
-            parsed['debug_images'] = debug_images
-
-            parsed['uploaded_images'] = {
-                'image': file_to_data_url(tmp_img.name)
-            }
-
-            return jsonify(parsed)
-
-        except subprocess.TimeoutExpired:
-            return jsonify({'error': 'Analysis timed out.'}), 500
-        except Exception as e:
-            return jsonify({'error': f'Analysis failed: {str(e)}'}), 500
-        finally:
-            try: os.unlink(tmp_img.name)
-            except Exception: pass
-            try:
-                import shutil; shutil.rmtree(tmp_out, ignore_errors=True)
-            except Exception: pass
-
-    else:
-        if 'left_image' not in request.files or 'right_image' not in request.files:
-            return jsonify({'error': 'Please upload both left and right images'}), 400
-
-        left_file = request.files['left_image']
-        right_file = request.files['right_image']
-
-        if not left_file.filename or not right_file.filename:
-            return jsonify({'error': 'Please select files for both images'}), 400
-
-        if not allowed_file(left_file.filename) or not allowed_file(right_file.filename):
-            return jsonify({'error': 'Unsupported file format. Use JPG, PNG, BMP, or TIFF.'}), 400
-
-        left_ext = left_file.filename.rsplit('.', 1)[1].lower()
-        right_ext = right_file.filename.rsplit('.', 1)[1].lower()
-
-        tmp_left = tempfile.NamedTemporaryFile(delete=False, suffix=f'.{left_ext}')
-        tmp_right = tempfile.NamedTemporaryFile(delete=False, suffix=f'.{right_ext}')
-        tmp_out = tempfile.mkdtemp()
-        try:
-            left_file.save(tmp_left.name)
-            right_file.save(tmp_right.name)
-            tmp_left.close()
-            tmp_right.close()
-
-            focal = request.form.get('focal_length', '35.0')
-            sensor = request.form.get('sensor_width', '36.0')
-            baseline = request.form.get('baseline', '0.1')
-            plate_w = request.form.get('plate_width', '0.3')
-            plate_h = request.form.get('plate_height', '0.2')
-
-            cmd = [
-                BINARY_PATH,
-                tmp_left.name, tmp_right.name,
-                '--focal', str(focal),
-                '--sensor', str(sensor),
-                '--baseline', str(baseline),
-                '--plate-width', str(plate_w),
-                '--plate-height', str(plate_h),
-                '--save-debug',
-                '--output', tmp_out
-            ]
-
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            output_text = proc.stdout + proc.stderr
-
-            parsed = parse_plate_output(output_text)
-
-            debug_images = {}
-            for f in sorted(os.listdir(tmp_out)):
-                if f.endswith(('.png', '.jpg')):
-                    debug_images[f] = file_to_data_url(os.path.join(tmp_out, f))
-            parsed['debug_images'] = debug_images
-
-            parsed['uploaded_images'] = {
-                'left': file_to_data_url(tmp_left.name),
-                'right': file_to_data_url(tmp_right.name),
-            }
-
-            return jsonify(parsed)
-
-        except subprocess.TimeoutExpired:
-            return jsonify({'error': 'Analysis timed out. Images may be too large.'}), 500
-        except Exception as e:
-            return jsonify({'error': f'Analysis failed: {str(e)}'}), 500
-        finally:
-            try: os.unlink(tmp_left.name)
-            except Exception: pass
-            try: os.unlink(tmp_right.name)
-            except Exception: pass
-            try:
-                import shutil; shutil.rmtree(tmp_out, ignore_errors=True)
-            except Exception: pass
 
 
 _init_from_settings()
 _start_reader()
 if not os.environ.get('ELECTRON_IS_PACKAGED'):
     subprocess.run(['make', '-C', TASK1_2_DIR, 'all'], capture_output=True)
+
+from task1_2 import task1_2_bp
+app.register_blueprint(task1_2_bp)
 
 if __name__ == '__main__':
     import signal, socket as _socket

@@ -10,6 +10,7 @@
   --text-dim:   #64748b;
   --text-muted: #3d5170;
   --red:        #ef4444;
+  --red-dim:    rgba(239,68,68,0.22);
   --yellow:     #f59e0b;
   --green:      #22c55e;
   --red-bg:     rgba(239,68,68,0.12);
@@ -96,13 +97,80 @@ body.dashboard-root { overflow: hidden; }
 .csi-source-select { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 0.6rem; padding: 3px 6px; outline: none; cursor: pointer; min-width: 0; }
 .csi-source-select:focus { border-color: var(--accent); }
 
-/* macOS-style toggle switch */
+/* macOS-style toggle switch — standard size */
 .csi-toggle-switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; -webkit-app-region: no-drag; flex-shrink: 0; }
 .csi-toggle-switch input { display: none; }
 .csi-toggle-track { width: 34px; height: 19px; background: var(--border); border-radius: 10px; transition: background 0.2s; position: relative; display: block; }
 .csi-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #fff; transition: transform 0.2s, background 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4); display: block; }
 .csi-toggle-switch input:checked + .csi-toggle-track { background: var(--accent); }
 .csi-toggle-switch input:checked + .csi-toggle-track .csi-toggle-thumb { transform: translateX(15px); }
+
+/* Larger toggle variant for param panels */
+.csi-toggle-switch-lg { position: relative; display: inline-flex; align-items: center; cursor: pointer; -webkit-app-region: no-drag; flex-shrink: 0; }
+.csi-toggle-switch-lg input { display: none; }
+.csi-toggle-switch-lg .csi-toggle-track { width: 70px; height: 34px; border-radius: 24px; }
+.csi-toggle-switch-lg .csi-toggle-thumb { top: 5px; left: 5px; width: 24px; height: 24px; }
+.csi-toggle-switch-lg input:checked + .csi-toggle-track { background: var(--accent); }
+.csi-toggle-switch-lg input:checked + .csi-toggle-track .csi-toggle-thumb { transform: translateX(36px); }
+
+/* Camera panel fullscreen button */
+.cam-fullscreen-btn {
+  position: absolute; bottom: 8px; right: 8px; z-index: 10;
+  width: 30px; height: 30px;
+  background: rgba(17,24,39,0.5); border: 1px solid var(--border);
+  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  -webkit-app-region: no-drag; opacity: 0.3; transition: opacity 0.2s, background 0.2s;
+  color: var(--text-dim);
+}
+.cameras-panel:not(.cam-fs-active):hover .cam-fullscreen-btn,
+.cam-fullscreen-btn:hover { opacity: 1; background: var(--surface2); color: var(--text-dim); }
+.cam-fullscreen-btn svg { display: block; pointer-events: none; }
+
+/* In fullscreen: suppress panel-hover reveal; only direct hover on button/toggle works */
+.cameras-panel.cam-fs-active:hover .cam-switcher-toggle { opacity: 0.3; background: rgba(17,24,39,0.5); }
+.cameras-panel.cam-fs-active .cam-switcher-toggle:hover,
+.cameras-panel.cam-fs-active .cam-switcher.open .cam-switcher-toggle { opacity: 1; background: var(--surface2); }
+
+/* Resting state of each HUD button in fullscreen */
+.cam-fullscreen-btn.fullscreen,
+.cam-switcher-toggle.fullscreen {
+  opacity: 0.6 !important;
+  background: rgba(17, 24, 39) !important;
+  /* color: rgba(255,255,255,0.5); */
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Direct hover on the button itself reveals it */
+.cam-fullscreen-btn.fullscreen:hover,
+.cam-switcher-toggle.fullscreen:hover,
+.cam-switcher.open .cam-switcher-toggle.fullscreen {
+  opacity: 1 !important;
+}
+
+/* Camera restart loading overlay */
+.cam-restart-overlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(9,14,26,0.5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+  border-radius: var(--radius);
+}
+.cam-restart-overlay.visible { opacity: 1; pointer-events: none; }
+.cam-restart-spinner {
+  width: 22px; height: 22px;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  will-change: transform;
+  animation: cam-spin 0.8s linear infinite;
+}
+.cam-restart-label {
+  font-family: 'Space Mono', monospace; font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim);
+}
+@keyframes cam-spin { to { transform: rotate(360deg); } }
 
 /* Undistort PKL list */
 .csi-undistort-upload-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); font-family: 'Space Mono', monospace; font-size: 0.58rem; font-weight: 700; padding: 3px 8px; cursor: pointer; transition: border-color 0.15s, color 0.15s; -webkit-app-region: no-drag; white-space: nowrap; }
@@ -455,10 +523,10 @@ header p, .subtitle { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.
 .field input { font-size: 1.1rem; }
 .field input:focus, .param-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
 .calc-btn, .btn-primary { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: #000; border: none; border-radius: var(--radius-sm); font-family: 'Space Mono', monospace; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.75rem 2rem; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
-.calc-btn { margin-top: 1.25rem; }
+.calc-btn { margin-top: 1.25rem; height: 44px !important; }
 .action-section { display: flex; align-items: center; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; }
 .action-section .calc-btn { margin-top: 0; }
-.screenshot-btn { background: var(--surface2) !important; color: var(--text) !important; border: 1px solid var(--accent) !important; opacity: 1 !important; }
+.screenshot-btn { background: var(--surface2) !important; color: var(--text) !important; border: 1px solid var(--accent) !important; opacity: 1 !important; height: 44px !important;}
 .screenshot-btn:hover { transform: translateY(-1px) !important; opacity: 0.88 !important; }
 .screenshot-btn:active { transform: scale(0.98) !important; }
 .screenshot-btn:disabled { opacity: 0.35 !important; cursor: not-allowed !important; transform: none !important; }
@@ -512,7 +580,7 @@ header p, .subtitle { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.
 .params-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 .params-header .section-title { margin-bottom: 0; }
 .toggle-icon { font-size: 1rem; color: var(--text-dim); font-weight: 400; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; line-height: 1; }
-.params-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; padding-top: 5px; margin-top: 20px; }
+.params-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; padding-top: 5px; margin-top: 20px; }
 .param-group label { display: block; font-size: 0.78rem; font-weight: 500; color: var(--text-dim); letter-spacing: 0.02em; margin-bottom: 0.4rem; }
 .loading-section { text-align: center; padding: 3.5rem 1rem; }
 .spinner { width: 36px; height: 36px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 1.1rem; animation: spin 0.8s linear infinite; }

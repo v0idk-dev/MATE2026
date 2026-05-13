@@ -13,7 +13,7 @@ printf "\n\e[97;4;1mFixing OpenCV libraries\e[0m\n\n"
 
 # Resolve paths relative to this script so it works from any cwd.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BINARY="${1:-$SCRIPT_DIR/scripts/task1_2/stereo_distance}"
+BINARY="${1:-$SCRIPT_DIR/scripts/task1_2/task1_2}"
 LIB_DIR="$SCRIPT_DIR/app/Resources/opencv-libs"
 
 if [ ! -f "$BINARY" ]; then

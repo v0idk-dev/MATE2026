@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "unit": "m",
+
+  "_comment_coordinate_system": "C++ model3d.hpp: +X=length, +Y=width/depth (~0.36m), +Z=height",
+  "_comment_size": "[length_x, width_y, height_z] per section",
+  "_comment_origin": "[x_center, -width/2, 0] — origin is center of bottom face",
+
+  "sections": [
+    {
+      "id": 0,
+      "label": "left",
+      "origin": [0.15, -0.18, 0.00],
+      "size":   [0.30, 0.36, 0.25],
+      "yaw_deg": 0.0,
+      "confidence": 1.0
+    },
+    {
+      "id": 1,
+      "label": "middle",
+      "origin": [0.50, -0.18, 0.00],
+      "size":   [0.40, 0.36, 0.55],
+      "yaw_deg": 0.0,
+      "confidence": 1.0
+    },
+    {
+      "id": 2,
+      "label": "right",
+      "origin": [0.85, -0.18, 0.00],
+      "size":   [0.30, 0.36, 0.40],
+      "yaw_deg": 0.0,
+      "confidence": 1.0
+    }
+  ],
+
+  "_comment_plates": [
+    "8 plates, 10x10cm. face values are C++ model faces:",
+    "  '+y' = front face (camera-facing), '-y' = back face",
+    "  '+z' = top,  '-z' = bottom,  '+x'/'-x' = ends",
+    "u = 0..1 along section LENGTH (X), v = 0..1 along section HEIGHT (Z)"
+  ],
+
+  "plates": [
+    { "id": 0, "section_id": 0, "face": "+y", "u": 0.15, "v": 0.85, "side_m": 0.10, "label": "front-left-TL",     "confidence": 1.0 },
+    { "id": 1, "section_id": 1, "face": "+y", "u": 0.15, "v": 0.85, "side_m": 0.10, "label": "front-middle-TL",   "confidence": 1.0 },
+    { "id": 2, "section_id": 1, "face": "+y", "u": 0.50, "v": 0.12, "side_m": 0.10, "label": "front-middle-BM",   "confidence": 1.0 },
+    { "id": 3, "section_id": 2, "face": "+y", "u": 0.85, "v": 0.85, "side_m": 0.10, "label": "front-right-TR",    "confidence": 1.0 },
+    { "id": 4, "section_id": 2, "face": "-y", "u": 0.85, "v": 0.85, "side_m": 0.10, "label": "back-right-TR",     "confidence": 1.0 },
+    { "id": 5, "section_id": 1, "face": "-y", "u": 0.85, "v": 0.85, "side_m": 0.10, "label": "back-middle-TR",    "confidence": 1.0 },
+    { "id": 6, "section_id": 1, "face": "-y", "u": 0.50, "v": 0.12, "side_m": 0.10, "label": "back-middle-BM",    "confidence": 1.0 },
+    { "id": 7, "section_id": 0, "face": "-y", "u": 0.15, "v": 0.85, "side_m": 0.10, "label": "back-left-TL",      "confidence": 1.0 }
+  ],
+
+  "totals": {
+    "length": 1.00,
+    "width":  0.36,
+    "height": 0.55
+  },
+
+  "calibration": {
+    "present": false,
+    "rms_px": null,
+    "baseline_m": null
+  },
+
+  "scale": {
+    "source": "sample-reference",
+    "confidence": 1.0,
+    "rms_m": 0.0
+  }
+}

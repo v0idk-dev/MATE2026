@@ -18,4 +18,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resetTaskSession: () => ipcRenderer.send('task-session-reset'),
     onTaskSessionReset: (cb) => ipcRenderer.on('task-session-reset', () => cb()),
     onZoomChange: (cb) => ipcRenderer.on('zoom-change', (_, factor) => cb(factor)),
+    onCameraRestarting: (cb) => ipcRenderer.on('camera-restarting', () => cb()),
+    onCameraReady: (cb) => ipcRenderer.on('camera-ready', () => cb()),
 });

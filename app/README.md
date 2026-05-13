@@ -113,7 +113,8 @@ app/Resources/python-runtime/bin/python3 -m pip install opencv-python blinker cl
 ### C++
 
 ```bash
-brew install opencv
+xcodebuild -downloadComponent MetalToolchain
+brew install opencv eigen pkg-config
 mkdir -p app/Resources/opencv-libs
 cp -L /opt/homebrew/opt/opencv/lib/*.dylib app/Resources/opencv-libs/
 ```
@@ -133,7 +134,7 @@ dist: $(TARGET)
 
 ### Electron App
 
-**Must use exactly Electron 40.6.1.** Do not upgrade or downgrade — this version is required for compatibility.
+**Must use exactly Electron 40.6.1.** Do not upgrade or downgrade; this version is required for compatibility.
 
 ```bash
 npm install electron@40.6.1 electron-builder --save-dev
@@ -167,19 +168,18 @@ Make sure the following are true before building, or the build will fail:
 
 - ***NOTHING*** shows up when you run `find app/Resources -type l` (no symlinks)
 - `native/settings/build/Release/settings.node` and `libSettingsUI.dylib` exist (run the Settings Addon install step if not)
-- You are **not** building inside a storage provider folder (iCloud, Google Drive, etc.) — storage providers add metadata that breaks the build
 
 **WARNING**: Do *not* build inside of a storage provider folder, such as Google Drive or iCloud.
 
 ```bash
 # Build with signing (for distribution)
-./build.sh "SIGNING-IDENTITY"
+bash build.sh "SIGNING-IDENTITY"
 
 # Build without signing (for testing)
-./build.sh --test
+bash build.sh --test
 
 # Just create the app folder (no DMG)
-./build.sh --pack
+bash build.sh --pack
 ```
 
 ## Notarization Commands

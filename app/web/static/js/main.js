@@ -1411,6 +1411,149 @@ function initCamResize() {
   });
 }
 
+// ── Camera fullscreen expand/collapse ────────────────────────────────────────
+function initCamFullscreen() {
+  const btn  = document.getElementById('cam-fullscreen-btn');
+  const panel = document.getElementById('cameras-panel');
+  if (!btn || !panel) return;
+
+  const EXPAND_SVG   = '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>';
+  const COLLAPSE_SVG = '<path d="M3 8h3a2 2 0 0 0 2-2V3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/>';
+  const E = 'cubic-bezier(0.4,0,0.2,1)';
+  const TR = `top .32s ${E},left .32s ${E},width .32s ${E},height .32s ${E}`;
+
+  let isOpen      = false;
+  let naturalH    = 0;   // panel height in normal flow, px number
+  let placeholder = null;
+
+  function setIcon(c) {
+    const svg = document.getElementById('cam-fs-icon');
+    if (svg) svg.innerHTML = c ? COLLAPSE_SVG : EXPAND_SVG;
+  }
+
+  // Inner content area of .dashboard (strips its padding)
+  function dashInner() {
+    const d = document.querySelector('.dashboard');
+    if (!d) return { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
+    const s = window.getComputedStyle(d), r = d.getBoundingClientRect();
+    return {
+      top:    r.top    + parseFloat(s.paddingTop),
+      left:   r.left   + parseFloat(s.paddingLeft),
+      width:  r.width  - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight),
+      height: r.height - parseFloat(s.paddingTop)  - parseFloat(s.paddingBottom),
+    };
+  }
+
+  // Position the fixed panel to the dashboard inner rect
+  function applyTarget() {
+    const t = dashInner();
+    panel.style.top    = t.top + 'px';
+    panel.style.left   = t.left + 'px';
+    panel.style.width  = t.width + 'px';
+    panel.style.height = t.height + 'px';
+  }
+
+  function openFullscreen() {
+    const from = panel.getBoundingClientRect();
+    naturalH = from.height;
+
+    // Placeholder: same size as panel, invisible, keeps bottom-area stable
+    placeholder = document.createElement('div');
+    placeholder.style.cssText =
+      `flex-shrink:0;width:${from.width}px;height:${naturalH}px;pointer-events:none;visibility:hidden;`;
+    panel.parentNode.insertBefore(placeholder, panel);
+
+    // Lift panel to fixed at exact current position, no transition yet
+    panel.style.position     = 'fixed';
+    panel.style.zIndex       = '9000';
+    panel.style.top          = from.top + 'px';
+    panel.style.left         = from.left + 'px';
+    panel.style.width        = from.width + 'px';
+    panel.style.height       = naturalH + 'px';
+    panel.style.borderRadius = 'var(--radius)';
+    panel.style.margin       = '0';
+    panel.style.flex         = 'none';
+    panel.style.transition   = 'none';
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      panel.style.transition = TR;
+      applyTarget();
+    }));
+
+    isOpen = true;
+    panel.classList.add('cam-fs-active');
+    btn.classList.add('fullscreen');
+    const tog = document.getElementById('cam-switcher-toggle');
+    if (tog) tog.classList.add('fullscreen');
+    setIcon(true);
+    btn.title = 'Exit full view';
+  }
+
+  function closeFullscreen() {
+    isOpen = false;
+    panel.classList.remove('cam-fs-active');
+    btn.classList.remove('fullscreen');
+    const tog = document.getElementById('cam-switcher-toggle');
+    if (tog) tog.classList.remove('fullscreen');
+    setIcon(false);
+    btn.title = 'Expand camera view';
+
+    // Read where placeholder sits — that's where the panel lands
+    const land = placeholder.getBoundingClientRect();
+    const cur  = panel.getBoundingClientRect();
+
+    // Ensure we start from current expanded position (no jump)
+    panel.style.transition = 'none';
+    panel.style.top    = cur.top    + 'px';
+    panel.style.left   = cur.left   + 'px';
+    panel.style.width  = cur.width  + 'px';
+    panel.style.height = cur.height + 'px';
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      panel.style.transition = TR;
+      panel.style.top    = land.top  + 'px';
+      panel.style.left   = land.left + 'px';
+      panel.style.width  = land.width + 'px';
+      panel.style.height = naturalH   + 'px';
+    }));
+
+    // Wait for the longest-running property (height or width) then restore flow
+    function onDone(e) {
+      if (e.propertyName !== 'height' && e.propertyName !== 'width') return;
+      panel.removeEventListener('transitionend', onDone);
+      placeholder.remove();
+      placeholder = null;
+      // Restore exactly what initCamResize leaves: height + flex:none, nothing else
+      panel.style.cssText = `height:${naturalH}px;flex:none;`;
+    }
+    panel.addEventListener('transitionend', onDone);
+    // Safety fallback in case transitionend misfires
+    setTimeout(() => {
+      if (!placeholder) return;
+      panel.removeEventListener('transitionend', onDone);
+      placeholder.remove();
+      placeholder = null;
+      panel.style.cssText = `height:${naturalH}px;flex:none;`;
+    }, 700);
+  }
+
+  // Window resize while open: update placeholder width + reposition panel instantly
+  window.addEventListener('resize', () => {
+    if (!isOpen) return;
+    // Update placeholder to match new panel width (main-col may have resized)
+    if (placeholder) {
+      const mainCol = panel.parentNode;
+      const colW = mainCol ? mainCol.getBoundingClientRect().width : placeholder.offsetWidth;
+      placeholder.style.width = colW + 'px';
+    }
+    panel.style.transition = 'none';
+    applyTarget();
+  });
+
+  btn.addEventListener('click', () => { isOpen ? closeFullscreen() : openFullscreen(); });
+  document.addEventListener('keydown', e => { if (isOpen && e.key === 'Escape') closeFullscreen(); });
+}
+
 // Init
 window.addEventListener('DOMContentLoaded', () => {
   // Build visualizer rulers
@@ -1432,6 +1575,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }).catch(() => { updateCamGrid(); });
   initVizSquare();
   initCamResize();
+  initCamFullscreen();
   updateConnectionState(false);
   initCamera();
   loadUndistortModels();
@@ -1449,6 +1593,33 @@ window.addEventListener('DOMContentLoaded', () => {
   if (window.electronAPI?.onWindowResizeStart) {
     window.electronAPI.onWindowResizeStart(pauseDrawLoop);
     window.electronAPI.onWindowResizeEnd(resumeDrawLoop);
+  }
+
+  // Camera restart indicator — clear feeds immediately, restore preferred cam when ready
+  const _restartOverlay = document.getElementById('cam-restart-overlay');
+  if (_restartOverlay && window.electronAPI?.onCameraRestarting) {
+    window.electronAPI.onCameraRestarting(() => {
+      _restartOverlay.classList.add('visible');
+      activeCameraIndex = null;
+      _selectedCamName = null;
+      _lastKnownCamList = null;
+      const sourceSelect = document.getElementById('csi-source-select');
+      if (sourceSelect) sourceSelect.value = '';
+      fetch('/api/camera/select', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uniqueID: null })
+      });
+      refreshCamFeeds();
+    });
+    window.electronAPI.onCameraReady(() => {
+      _restartOverlay.classList.remove('visible');
+      window._preRestartCamName = null;
+      // _selectedCamName is already null from the restarting handler,
+      // so _refreshCameraList will fall through to the settings default
+      // camera logic (picks default if set, otherwise stays at none).
+      _lastKnownCamList = null;
+      _refreshCameraList();
+    });
   }
 
   // INIT starts disabled — no opmode selected yet

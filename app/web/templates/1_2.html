@@ -3,90 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MATE ROV — Vision Tools</title>
+    <title>MATE ROV — Task 1.2 — Coral Garden Photogrammetry</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../static/css/main.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/1_2.css') }}">
 </head>
 <body>
 
 <header class="app-header">
-    <h1>Coral Ridge Vision Tools</h1>
-    <p class="subtitle">Stereo distance measurement & PVC pipe length analysis</p>
+    <h1>Task 1.2 — Coral Garden Photogrammetry</h1>
+    <p class="subtitle">Stereo reconstruction · 3 sections · 8 same-color 10cm plates</p>
 </header>
 
 <div class="app-container">
 
-    <!-- ── Plates mode ── -->
-    <div id="plates-mode">
-
-        <div class="card">
-            <div class="section-title">Stereo Input Data</div>
-            <div class="upload-grid">
-                <div class="upload-card" id="left-upload">
-                    <input type="file" id="left-image" accept="image/*" hidden>
-                    <div class="upload-placeholder" onclick="document.getElementById('left-image').click()">
-                        <div class="upload-icon">
-                            <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                        </div>
-                        <span class="upload-label">Left Camera (CH01)</span>
-                        <span class="upload-hint">Click to select</span>
+    <!-- ── Inputs ── -->
+    <div class="card">
+        <div class="section-title">Stereo Input</div>
+        <div class="upload-grid">
+            <div class="upload-card" id="left-upload">
+                <input type="file" id="left-image" accept="image/*" hidden>
+                <div class="upload-placeholder" onclick="document.getElementById('left-image').click()">
+                    <div class="upload-icon">
+                        <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
                     </div>
-                    <img id="left-preview" class="image-preview" alt="">
+                    <span class="upload-label">Left Camera</span>
+                    <span class="upload-hint">Click to select</span>
                 </div>
-                <div class="upload-card" id="right-upload">
-                    <input type="file" id="right-image" accept="image/*" hidden>
-                    <div class="upload-placeholder" onclick="document.getElementById('right-image').click()">
-                        <div class="upload-icon">
-                            <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                        </div>
-                        <span class="upload-label">Right Camera (CH02)</span>
-                        <span class="upload-hint">Click to select</span>
+                <img id="left-preview" class="image-preview" alt="">
+            </div>
+            <div class="upload-card" id="right-upload">
+                <input type="file" id="right-image" accept="image/*" hidden>
+                <div class="upload-placeholder" onclick="document.getElementById('right-image').click()">
+                    <div class="upload-icon">
+                        <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="20" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 32l12-10 8 6 8-12 12 16" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
                     </div>
-                    <img id="right-preview" class="image-preview" alt="">
+                    <span class="upload-label">Right Camera</span>
+                    <span class="upload-hint">Click to select</span>
                 </div>
-            </div>
-            <div class="params-grid" id="params-panel">
-                <div class="param-group">
-                    <label for="focal-length">Focal Length (mm)</label>
-                    <input type="number" id="focal-length" value="35.0" step="0.1" min="1">
-                </div>
-                <div class="param-group">
-                    <label for="sensor-width">Sensor Width (mm)</label>
-                    <input type="number" id="sensor-width" value="36.0" step="0.1" min="1">
-                </div>
-                <div class="param-group">
-                    <label for="baseline">Camera Baseline (m)</label>
-                    <input type="number" id="baseline" value="0.1" step="0.01" min="0.001">
-                </div>
-                <div class="param-group">
-                    <label for="plate-width">Plate Width (m)</label>
-                    <input type="number" id="plate-width" value="0.3" step="0.01" min="0.01">
-                </div>
-                <div class="param-group">
-                    <label for="plate-height">Plate Height (m)</label>
-                    <input type="number" id="plate-height" value="0.2" step="0.01" min="0.01">
-                </div>
-            </div>
-            <div class="action-section">
-                <button id="analyze-btn" class="calc-btn" onclick="runAnalysis()" disabled>
-                    <span id="analyze-btn-text">Analyze Distance</span>
-                </button>
-                <button class="calc-btn screenshot-btn" onclick="takeScreenshots()">
-                    Screenshot
-                </button>
+                <img id="right-preview" class="image-preview" alt="">
             </div>
         </div>
 
+        <div class="params-grid" id="params-panel">
+            <div class="param-group">
+                <label for="plate-color">Plate Color</label>
+                <input type="color" id="plate-color" value="#8000ff">
+            </div>
+            <div class="param-group">
+                <label for="baseline-m" title="Physical distance between the two camera lenses (meters).">Stereo Baseline (m)</label>
+                <input type="number" id="baseline-m" value="0.10" step="0.01" min="0.01" max="2.0">
+            </div>
+            <div class="param-group">
+                <label for="plate-w" title="Physical width of one calibration plate (meters).">Plate Width (m)</label>
+                <input type="number" id="plate-w" value="0.10" step="0.001" min="0.01" max="1.0">
+            </div>
+            <div class="param-group">
+                <label for="plate-h" title="Physical height of one calibration plate (meters).">Plate Height (m)</label>
+                <input type="number" id="plate-h" value="0.10" step="0.001" min="0.01" max="1.0">
+            </div>
+            <div class="param-group">
+                <label for="plate-count" title="Number of coloured plates expected in the scene.">Plate Count</label>
+                <input type="number" id="plate-count" value="8" step="1" min="1" max="64">
+            </div>
+            <div class="param-group">
+                <label>Underwater</label>
+                <label class="csi-toggle-switch-lg pg-uw-toggle">
+                    <input type="checkbox" id="underwater">
+                    <span class="csi-toggle-track"><span class="csi-toggle-thumb"></span></span>
+                </label>
+            </div>
+        </div>
+
+        <p id="pg-calib-status" class="pg-calib-status" style="margin-top:0.6rem"></p>
+
+        <div class="action-section">
+            <button id="analyze-btn" class="calc-btn" disabled>Analyze</button>
+            <button class="calc-btn screenshot-btn" id="pg-screenshot-btn">Screenshot</button>
+            <button class="calc-btn pg-secondary-btn" id="upload-json-btn">Upload JSON</button>
+            <input type="file" id="upload-json-input" accept="application/json,.json" hidden>
+        </div>
+
+        <!-- Image stack — shown after first screenshot -->
+        <div id="pg-stack-bar" class="pg-stack-bar" style="display:none"></div>
     </div>
 
-    <!-- Loading -->
+    <!-- ── Loading ── -->
     <div id="loading-section" class="loading-section" style="display:none">
         <div class="spinner"></div>
         <p>Analyzing…</p>
-        <p class="loading-sub" id="loading-sub-text">Processing Inputs</p>
+        <p class="loading-sub" id="loading-sub-text">Processing inputs</p>
     </div>
 
-    <!-- Error -->
+    <!-- ── Error ── -->
     <div id="error-section" style="display:none">
         <div class="error-card">
             <span class="error-icon">!</span>
@@ -97,47 +106,33 @@
     <!-- ── Results ── -->
     <div id="results-section" style="display:none">
 
-        <!-- Annotated output image -->
+        <!-- 3D viewer -->
         <div class="card scard">
-            <div class="section-title" id="results-title">Annotated Output</div>
-            <div id="annotated-image-container" class="annotated-container"></div>
-            <div class="cd-download-bar">
-                <button class="cd-download-btn" id="annotated-dl-btn" style="display:none" onclick="downloadAnnotated()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
-                    Download
-                </button>
-                <span class="cd-download-hint" id="annotated-dl-hint"></span>
+            <div class="section-title" id="results-title">3D Model</div>
+            <div id="pg-viewer-container" class="pg-viewer-container">
+                <canvas id="pg-3d-canvas"></canvas>
+                <div class="pg-viewer-hint">drag to rotate · scroll to zoom · right-drag to pan</div>
+            </div>
+            <div class="pg-viewer-controls">
+                <div class="pg-viewer-controls-left">
+                    <button type="button" class="pg-secondary-btn" id="pg-enhance">Enhance</button>
+                    <button type="button" class="pg-secondary-btn" id="pg-real-width" title="Click: set real length · Option+click: set real height">Real Length</button>
+                </div>
+                <div class="pg-viewer-controls-right">
+                    <button type="button" class="pg-secondary-btn" id="pg-reset-view">Reset View</button>
+                    <button type="button" class="pg-secondary-btn" id="pg-toggle-dimensions">Dimensions</button>
+                    <button type="button" class="pg-secondary-btn" id="pg-export-glb">Export GLB</button>
+                </div>
             </div>
         </div>
 
-        <!-- Plate results -->
-        <div id="plate-results" style="display:none">
-
-            <div class="card scard">
-                <div class="section-title">Plate Distances</div>
-                <div id="plate-distances-list" class="plate-distances-grid"></div>
+        <!-- Technicals -->
+        <div class="card scard">
+            <div class="section-title">Technicals</div>
+            <div class="stat-list" id="pg-stats"></div>
+            <div class="cd-download-bar" style="margin-top:10px">
+                <button class="pg-secondary-btn" id="pg-export-json">Download JSON</button>
             </div>
-
-            <div class="result-card">
-                <h3>Stereo Geometry</h3>
-                <div class="stat-list" id="stereo-stats"></div>
-            </div>
-
-        </div>
-
-        <!-- Pipe results -->
-        <div id="pipe-results" style="display:none">
-
-            <div class="card scard">
-                <div class="section-title">Pipe Lengths</div>
-                <div id="pipe-lengths-list" class="plate-distances-grid"></div>
-            </div>
-
-            <div class="result-card">
-                <h3>Scale Calibration</h3>
-                <div class="stat-list" id="scale-stats"></div>
-            </div>
-
         </div>
 
         <!-- Visualization tabs -->
@@ -145,22 +140,24 @@
             <div class="section-title">Visualization</div>
             <div class="tabs">
                 <button class="tab active" data-tab="uploaded">Input Images</button>
-                <button class="tab" data-tab="detections">Detections</button>
-                <button class="tab" data-tab="matches">Feature Matches</button>
-                <button class="tab" data-tab="epipolar">Epipolar Lines</button>
+                <button class="tab" data-tab="detections">Undistorted</button>
+                <button class="tab" data-tab="epipolar">Rectified</button>
+                <button class="tab" data-tab="plates">Plates</button>
+                <button class="tab" data-tab="pipes">Pipes</button>
             </div>
             <div class="tab-content">
                 <div class="tab-panel active" id="panel-uploaded"></div>
                 <div class="tab-panel" id="panel-detections"></div>
-                <div class="tab-panel" id="panel-matches"></div>
                 <div class="tab-panel" id="panel-epipolar"></div>
+                <div class="tab-panel" id="panel-plates"></div>
+                <div class="tab-panel" id="panel-pipes"></div>
             </div>
         </div>
 
         <!-- Raw output -->
         <div class="raw-output-section">
-            <div class="raw-header" onclick="toggleRaw()">
-                <h3>Raw Console Output</h3>
+            <div class="raw-header" id="raw-header">
+                <h3>Raw JSON</h3>
                 <span class="toggle-icon" id="raw-toggle">+</span>
             </div>
             <pre id="raw-output" style="display:none"></pre>
@@ -170,6 +167,51 @@
 
 </div>
 
-<script src="../static/js/1_2.js"></script>
+<!-- ── Model override modal ── -->
+<div id="pg-ai-modal" class="pg-modal-backdrop pg-modal-hidden" role="dialog" aria-modal="true">
+    <div class="pg-modal">
+        <div class="pg-modal-title">Enhancement Model</div>
+        <div class="pg-modal-body">
+            <label class="pg-modal-label" for="pg-ai-model-select">Model for this pass</label>
+            <select id="pg-ai-model-select"></select>
+        </div>
+        <div class="pg-modal-actions">
+            <button type="button" class="pg-secondary-btn" id="pg-ai-cancel" style="padding:0.5rem 1rem;font-size:0.7rem;line-height:1">Cancel</button>
+            <button type="button" class="calc-btn" id="pg-ai-confirm" style="padding:0.5rem 1.2rem;font-size:0.7rem;line-height:1">Enhance</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Scale input modal (replaces native prompt()) ── -->
+<div id="pg-scale-modal" class="pg-modal-backdrop pg-modal-hidden" role="dialog" aria-modal="true">
+    <div class="pg-modal">
+        <div class="pg-modal-title" id="pg-scale-modal-title">Set Real Length</div>
+        <div class="pg-modal-body">
+            <label class="pg-modal-label" id="pg-scale-modal-label" for="pg-scale-input">Length (cm)</label>
+            <input type="number" id="pg-scale-input" class="pg-modal-input" min="1" step="0.1">
+            <div class="pg-modal-hint" id="pg-scale-modal-hint"></div>
+        </div>
+        <div class="pg-modal-actions">
+            <button type="button" class="pg-secondary-btn" id="pg-scale-cancel">Cancel</button>
+            <button type="button" class="calc-btn pg-modal-confirm" id="pg-scale-confirm">Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- Three.js (vendored locally at static/vendor/three/, pinned to r146).
+     MUST stay on r146 or earlier: r147+ removed the classic UMD/global-
+     script builds of OrbitControls / GLTFExporter / OBJExporter and only
+     ships them as ES modules under examples/jsm/. Without these three
+     loading as globals the viewer throws at `new THREE.OrbitControls(...)`
+     and silently breaks the whole UI. -->
+<script src="{{ url_for('static', filename='vendor/three.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/OrbitControls.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/GLTFExporter.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/OBJExporter.js') }}"></script>
+
+<!-- Cache-bust: Flask doesn't fingerprint static URLs, so browsers happily
+     serve a stale viewer.js for hours. Bump ?v= whenever the JS changes. -->
+<script src="{{ url_for('static', filename='js/1_2_viewer.js') }}?v=20260510b"></script>
+<script src="{{ url_for('static', filename='js/1_2.js') }}?v=20260510b"></script>
 </body>
 </html>

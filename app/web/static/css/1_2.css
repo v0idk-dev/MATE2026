@@ -1,0 +1,233 @@
+/* 1_2.css — Task 1.2-only additions on top of main.css design tokens. */
+
+
+.pg-calib-status {
+  font-family: 'Space Mono', monospace; font-size: 0.65rem;
+  color: var(--text-dim); margin: 0.6rem 0 0; letter-spacing: 0.04em;
+}
+.pg-calib-status.ok   { color: var(--accent); }
+.pg-calib-status.warn { color: var(--yellow); }
+
+.pg-uw-toggle { -webkit-app-region: no-drag; height: 38px !important; }
+
+/* ── Toggle switch ── */
+.pg-toggle-switch {
+  display: inline-flex; align-items: center; cursor: pointer; margin: 0;
+  height: 38px;  /* matches other param inputs */
+}
+.pg-toggle-switch input[type="checkbox"] {
+  position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
+}
+.pg-toggle-track {
+  flex-shrink: 0;
+  position: relative; width: 40px; height: 22px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 11px; transition: background 0.18s, border-color 0.18s;
+}
+.pg-toggle-switch input:checked ~ .pg-toggle-track {
+  background: var(--accent); border-color: var(--accent);
+}
+.pg-toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--text-muted); transition: left 0.18s, background 0.18s;
+  pointer-events: none;
+}
+.pg-toggle-switch input:checked ~ .pg-toggle-track .pg-toggle-thumb {
+  left: 21px; background: #fff;
+}
+
+input[type="color"] {
+  width: 100%; height: 38px; padding: 2px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--bg); cursor: pointer;
+}
+
+.pg-advanced { margin-top: 1.25rem; }
+.pg-advanced > summary {
+  cursor: pointer; font-family: 'Space Mono', monospace; font-size: 0.66rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim);
+  padding: 0.4rem 0; -webkit-user-select: none; user-select: none;
+}
+.pg-advanced > summary:hover { color: var(--accent); }
+.pg-advanced[open] > summary { color: var(--accent); }
+
+/* Secondary button — same height as .calc-btn via matching padding */
+.pg-secondary-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-family: 'Space Mono', monospace; font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 0.6rem 1rem; cursor: pointer; line-height: 1;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.pg-secondary-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.pg-secondary-btn:active { transform: scale(0.98); }
+.pg-secondary-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Normalize all param inputs to same height as number inputs */
+#params-panel input[type="color"],
+#params-panel input[type="number"] {
+  height: 38px; box-sizing: border-box;
+}
+#params-panel input[type="color"] { padding: 2px; }
+
+/* Toggle in param panel — full 38 px row height, vertically centred */
+#params-panel .pg-uw-toggle {
+  height: 38px; display: flex; align-items: center;
+}
+
+/* Action buttons match .calc-btn exactly — no override needed,
+   but pg-secondary-btn in the action bar should match */
+.action-section .pg-secondary-btn {
+  padding: 0.75rem 2rem; font-size: 0.82rem; font-weight: 700; line-height: 1;
+}
+
+.pg-viewer-container {
+  position: relative;
+  width: 100%; height: 480px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+#pg-3d-canvas { display: block; width: 100%; height: 100%; }
+.pg-viewer-hint {
+  position: absolute; bottom: 8px; left: 12px;
+  font-family: 'Space Mono', monospace; font-size: 0.58rem;
+  color: var(--text-muted); letter-spacing: 0.04em;
+  pointer-events: none;
+}
+.pg-viewer-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.55rem; margin-top: 1rem;
+}
+.pg-viewer-controls-left  { display: flex; gap: 0.55rem; flex-wrap: wrap; }
+.pg-viewer-controls-right { display: flex; gap: 0.55rem; flex-wrap: wrap; }
+
+/* ── Stat rows with multi-line value support ── */
+.stat-row { display: flex; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+.stat-row:last-child { border-bottom: none; }
+.stat-label { flex: 0 0 52%; font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.04em; }
+.stat-value { flex: 1; font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--text); text-align: right; white-space: pre-line; word-break: break-word; }
+.stat-row.warn .stat-label,
+.stat-row.warn .stat-value { color: var(--yellow); }
+.stat-row.bad .stat-label,
+.stat-row.bad .stat-value  { color: var(--red); }
+
+/* ── Scale input modal ── */
+.pg-modal-backdrop {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+}
+.pg-modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.6rem 1.8rem;
+  width: 320px; max-width: calc(100vw - 2rem);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column; gap: 1.1rem;
+}
+.pg-modal-title {
+  font-family: 'Space Mono', monospace; font-size: 0.78rem;
+  font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent);
+}
+.pg-modal-body { display: flex; flex-direction: column; gap: 0.5rem; }
+.pg-modal-label {
+  font-family: 'Space Mono', monospace; font-size: 0.65rem;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim);
+}
+.pg-modal-input {
+  width: 100%; padding: 0.55rem 0.75rem;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: 'Space Mono', monospace; font-size: 0.9rem;
+  outline: none; box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.pg-modal-input:focus { border-color: var(--accent); }
+.pg-modal-hint {
+  font-size: 0.65rem; color: var(--text-dim);
+  font-family: 'Space Mono', monospace; min-height: 0.9rem;
+}
+.pg-modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; align-items: center; }
+/* Cancel in modal matches Apply height */
+#pg-scale-cancel { padding: 0.5rem 1rem; font-size: 0.7rem; line-height: 1; }
+.pg-modal-confirm { padding: 0.5rem 1.2rem; font-size: 0.7rem; line-height: 1; margin-top: 0px !important; height: 29.2px !important; }
+.pg-modal-confirm:active, .btn-primary:active:not(:disabled) { transform: 0 !important; }
+.pg-modal-hidden { display: none; }
+
+#analyze-btn[disabled] { opacity: 1; cursor: allowed; }
+
+/* Enhance button inline spinner */
+.pg-enhance-spinner {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pg-spin 0.7s linear infinite;
+}
+@keyframes pg-spin { to { transform: rotate(360deg); } }
+#pg-enhance:disabled { opacity: 0.7; cursor: not-allowed; }
+
+/* Visualization tab image grid */
+.pg-viz-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; padding: 0.5rem 0;
+}
+.pg-viz-grid img { width: 100%; border-radius: var(--radius-sm); display: block; }
+.pg-viz-label {
+  font-family: 'Space Mono', monospace; font-size: 0.6rem;
+  color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.pg-viz-empty {
+  font-family: 'Space Mono', monospace; font-size: 0.7rem;
+  color: var(--text-muted); padding: 1.5rem 0; text-align: center;
+}
+
+/* ── Image stack bar ── */
+.pg-stack-bar {
+  margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem;
+  align-items: flex-end;
+}
+.pg-stack-item {
+  position: relative; width: 64px; cursor: pointer;
+  transition: transform 0.15s;
+}
+.pg-stack-item:hover { transform: scale(1.08); z-index: 10; }
+.pg-stack-item img {
+  width: 64px; height: 44px; object-fit: cover;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  display: block;
+}
+.pg-stack-item.pg-stack-active img { border-color: var(--accent); }
+.pg-stack-del {
+  position: absolute; top: -6px; right: -6px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 9px; line-height: 16px;
+  text-align: center; cursor: pointer; display: none;
+  font-family: 'Space Mono', monospace;
+}
+.pg-stack-item:hover .pg-stack-del { display: block; }
+.pg-stack-del:hover { background: var(--red); color: #fff; border-color: var(--red); }
+.pg-stack-label {
+  font-family: 'Space Mono', monospace; font-size: 0.52rem;
+  color: var(--text-muted); text-align: center; margin-top: 3px;
+  letter-spacing: 0.04em; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* AI model override modal */
+#pg-ai-modal .pg-modal { width: 300px; }
+#pg-ai-model-select {
+  width: 100%; padding: 0.45rem 0.65rem;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: 'Space Mono', monospace; font-size: 0.8rem;
+  outline: none; box-sizing: border-box;
+}
+#pg-ai-model-select:focus { border-color: var(--accent); }
+#pg-ai-confirm { margin-top: 0px !important; height: 29.2px !important; }
+
+#raw-output { -webkit-user-select: text; user-select: text; }
+.raw-header  { -webkit-user-select: none; user-select: none; }

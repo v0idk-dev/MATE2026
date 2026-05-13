@@ -415,6 +415,103 @@ Napi::Value ListCameras(const Napi::CallbackInfo& info) {
     return result;
 }
 
+// ── AI provider key access (Keychain-backed; implemented in Swift) ──────────
+// All five entry points are looked up by name in libSettingsUI.dylib via
+// dlsym. They never block the main thread for any meaningful time (Keychain
+// access is local), so we call them synchronously here.
+
+typedef int32_t (*AIKeySetFn)(const char* provider, const char* key);
+typedef char*   (*AIKeyGetFn)(const char* provider);
+typedef int32_t (*AIKeyDelFn)(const char* provider);
+typedef int32_t (*AIKeyHasFn)(const char* provider);
+typedef int32_t (*AIAppleAvailFn)(void);
+typedef char*   (*AIProvidersJsonFn)(void);
+
+Napi::Value AIKeySet(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 2 || !info[0].IsString() || !info[1].IsString())
+        return Napi::Boolean::New(env, false);
+    if (!LoadUI()) return Napi::Boolean::New(env, false);
+    auto fn = (AIKeySetFn)dlsym(g_lib, "ai_key_set");
+    if (!fn) return Napi::Boolean::New(env, false);
+    std::string provider = info[0].As<Napi::String>().Utf8Value();
+    std::string key      = info[1].As<Napi::String>().Utf8Value();
+    int32_t ok = fn(provider.c_str(), key.c_str());
+    return Napi::Boolean::New(env, ok != 0);
+}
+
+Napi::Value AIKeyGet(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString()) return env.Null();
+    if (!LoadUI()) return env.Null();
+    auto fn = (AIKeyGetFn)dlsym(g_lib, "ai_key_get");
+    if (!fn) return env.Null();
+    std::string provider = info[0].As<Napi::String>().Utf8Value();
+    char* val = fn(provider.c_str());
+    if (!val) return env.Null();
+    auto result = Napi::String::New(env, val);
+    free(val);
+    return result;
+}
+
+Napi::Value AIKeyDelete(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString())
+        return Napi::Boolean::New(env, false);
+    if (!LoadUI()) return Napi::Boolean::New(env, false);
+    auto fn = (AIKeyDelFn)dlsym(g_lib, "ai_key_delete");
+    if (!fn) return Napi::Boolean::New(env, false);
+    std::string provider = info[0].As<Napi::String>().Utf8Value();
+    int32_t ok = fn(provider.c_str());
+    return Napi::Boolean::New(env, ok != 0);
+}
+
+Napi::Value AIKeyHas(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString())
+        return Napi::Boolean::New(env, false);
+    if (!LoadUI()) return Napi::Boolean::New(env, false);
+    auto fn = (AIKeyHasFn)dlsym(g_lib, "ai_key_has");
+    if (!fn) return Napi::Boolean::New(env, false);
+    std::string provider = info[0].As<Napi::String>().Utf8Value();
+    int32_t has = fn(provider.c_str());
+    return Napi::Boolean::New(env, has != 0);
+}
+
+Napi::Value AppleIntelligenceAvailable(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (!LoadUI()) return Napi::Boolean::New(env, false);
+    auto fn = (AIAppleAvailFn)dlsym(g_lib, "apple_intelligence_available");
+    if (!fn) return Napi::Boolean::New(env, false);
+    return Napi::Boolean::New(env, fn() != 0);
+}
+
+Napi::Value AIProvidersJson(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (!LoadUI()) return Napi::String::New(env, "{}");
+    auto fn = (AIProvidersJsonFn)dlsym(g_lib, "ai_providers_json");
+    if (!fn) return Napi::String::New(env, "{}");
+    char* json = fn();
+    auto result = Napi::String::New(env, json ? json : "{}");
+    if (json) free(json);
+    return result;
+}
+
+typedef char* (*AIAppleGenFn)(const char*);
+Napi::Value AppleIntelligenceGenerate(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString())
+        return Napi::String::New(env, "{\"error\":\"prompt required\"}");
+    if (!LoadUI()) return Napi::String::New(env, "{\"error\":\"addon\"}");
+    auto fn = (AIAppleGenFn)dlsym(g_lib, "apple_intelligence_generate");
+    if (!fn) return Napi::String::New(env, "{\"error\":\"symbol\"}");
+    std::string prompt = info[0].As<Napi::String>().Utf8Value();
+    char* out = fn(prompt.c_str());
+    auto r = Napi::String::New(env, out ? out : "{}");
+    if (out) free(out);
+    return r;
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("open",               Napi::Function::New(env, Open));
     exports.Set("close",              Napi::Function::New(env, Close));
@@ -424,6 +521,15 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("decorateFullScreenMenuItem", Napi::Function::New(env, DecorateFullScreenMenuItem));
     exports.Set("suppressAutoFullScreen", Napi::Function::New(env, SuppressAutoFullScreen));
     exports.Set("setMenuKeyEquivalent", Napi::Function::New(env, SetMenuKeyEquivalent));
+    // AI provider key access (Keychain-backed)
+    exports.Set("aiKeySet",            Napi::Function::New(env, AIKeySet));
+    exports.Set("aiKeyGet",            Napi::Function::New(env, AIKeyGet));
+    exports.Set("aiKeyDelete",         Napi::Function::New(env, AIKeyDelete));
+    exports.Set("aiKeyHas",            Napi::Function::New(env, AIKeyHas));
+    exports.Set("appleIntelligenceAvailable",
+                                       Napi::Function::New(env, AppleIntelligenceAvailable));
+    exports.Set("aiProvidersJson",     Napi::Function::New(env, AIProvidersJson));
+    exports.Set("appleIntelligenceGenerate", Napi::Function::New(env, AppleIntelligenceGenerate));
     // Load dylib and register scene at addon init time
     dispatch_async(dispatch_get_main_queue(), ^{ LoadUI(); });
     return exports;
