@@ -1011,11 +1011,16 @@ def crab_detect():
         result  = results[0]
         img_h, img_w = result.orig_shape
  
+        KNOWN_CLASSES = {'green_crab', 'rock_crab', 'jonah_crab'}
+        def normalize_class(name):
+            n = name.strip().lower().replace(' ', '_')
+            return n if n in KNOWN_CLASSES else name
+
         detections = []
         for box in result.boxes:
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             detections.append({
-                'class': model.names[int(box.cls)],
+                'class': normalize_class(model.names[int(box.cls)]),
                 'conf':  round(float(box.conf), 4),
                 'box':   [round(x1), round(y1), round(x2), round(y2)],
             })
