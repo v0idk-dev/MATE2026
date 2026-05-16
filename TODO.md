@@ -64,4 +64,4 @@
 * [X] Train AI model
 * [X] Test and package the model
 * [X] Gather expanded data
-* [ ] Train on expanded data
+* [X] Train on expanded data
