@@ -306,6 +306,6 @@ xcrun notarytool submit dist/MATE\ 2026\ Robot\ Controller-VERSION-arm64.dmg \
 xcrun stapler staple dist/MATE\ 2026\ Robot\ Controller-VERSION-arm64.dmg
 ```
 
-<small>MATE 2026 ROV FIH Integrated Control and Analysis System for Fish & Chips Technologies
+<sub><sup>MATE 2026 ROV FIH Integrated Control and Analysis System for Fish & Chips Technologies
 ©2026 Doğukan Koç. All Rights Reserved. For internal use only.
-</small>
+</sup></sub>
