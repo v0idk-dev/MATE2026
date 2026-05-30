@@ -1,8 +1,8 @@
 {
   "name": "mate-2026-robot-controller",
   "version": "0.3.1",
-  "buildNumber": 68,
-  "description": "MATE 2026 ROV Control System for Fish & Chips Technologies",
+  "buildNumber": 70,
+  "description": "MATE 2026 ROV FIH Integrated Control and Analysis System for Fish & Chips Technologies",
   "author": "Dogukan Koc",
   "main": "main.js",
   "scripts": {

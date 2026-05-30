@@ -17,14 +17,12 @@ app/
 ├── dmg-bg.sh                         Generates the DMG background image
 ├── fix-dmg-bg.sh                     Applies the background to a built DMG
 ├── fix-opencv.sh                     Patches OpenCV dylib @rpaths for distribution
-├── .gitignore                        Git ignore rules for app/
 │
 ├── build/                            Static assets consumed by electron-builder
 │   ├── icon.icns                     App icon (macOS)
 │   ├── background.png                DMG background image
 │   ├── SpaceMono-Bold.ttf            Bundled font
-│   ├── SpaceMono-Regular.ttf         Bundled font
-│   └── .gitignore
+│   └── SpaceMono-Regular.ttf         Bundled font
 │
 ├── web/                              Flask web server (Python)
 │   ├── app.py                        Main Flask app — camera, settings, task routing, AI proxy
@@ -76,7 +74,6 @@ app/
         ├── README.md                 Short overview
         ├── INFO.md                   In-depth pipeline walkthrough + diagrams
         ├── MATH.md                   Derivations for every formula used
-        ├── .gitignore                Ignore build files
         │
         ├── include/                  C++ headers
         │   ├── pipeline.hpp          PipelineInput / PipelineOutput / runPipeline()
@@ -309,4 +306,6 @@ xcrun notarytool submit dist/MATE\ 2026\ Robot\ Controller-VERSION-arm64.dmg \
 xcrun stapler staple dist/MATE\ 2026\ Robot\ Controller-VERSION-arm64.dmg
 ```
 
-©2026 Doğukan Koç. All Rights Reserved. For private use only, do not distribute.
+<small>MATE 2026 ROV FIH Integrated Control and Analysis System for Fish & Chips Technologies
+©2026 Doğukan Koç. All Rights Reserved. For internal use only.
+</small>

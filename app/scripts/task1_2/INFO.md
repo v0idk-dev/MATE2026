@@ -950,7 +950,7 @@ The full pipeline now runs in **~400 ms / pair** on Apple Silicon.
 
 ### YOLOv8 segmentation path (not yet implemented)
 
-If you later want to push beyond classical CV:
+To push beyond classical CV:
 
 1. **Train data**: capture ~500 images of MATE-style PVC structures. Annotate masks with Roboflow or CVAT. Two classes: `pipe`, `plate`.
 2. **Train**: `yolo segment train model=yolov8n-seg.pt data=pvc.yaml imgsz=1280 epochs=100 batch=16` on a Colab T4 (~2 hours). Export to CoreML: `yolo export model=runs/.../best.pt format=coreml`.
@@ -962,7 +962,7 @@ If you later want to push beyond classical CV:
 
 The architecture intentionally swaps just the mask source — stages 2–10 are detector-agnostic, so a learned segmenter slots in without touching the photogrammetry code.
 
-### Other future ideas
+### Other future implementations
 
 - **ChArUco calibration** in `camera_calibration.py` — robust to chessboard occlusions.
 - **Kalibr** for full-rig calibration including IMU if you ever add one.
