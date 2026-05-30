@@ -44,5 +44,5 @@ Used to store backups for core files located within the integrated app.
 
 Hand-drawn blueprint for the core design of the app.
 
-<small>MATE 2026 ROV FIH Integrated Control and Analysis System for Fish & Chips Technologies
-©2026 Dogukan Koc. All Rights Reserved. For internal use only.</small>
+<sub><sup>MATE 2026 ROV FIH Integrated Control and Analysis System for Fish & Chips Technologies
+©2026 Dogukan Koc. All Rights Reserved. For internal use only.</sup></sub>
